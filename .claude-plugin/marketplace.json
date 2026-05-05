@@ -5,8 +5,8 @@
     {
       "name": "mol",
       "source": "./plugins/mol",
-      "description": "Project workflow skills for molcrafts repos, organized around the planner→generator→evaluator harness pattern. 14 skills (spec, impl, litrev, arch, review, test, perf, docs, note, fix, debug, refactor, ship, web [v0.1.1]) + 14 single-axis agents. Adapts per project via mol_project frontmatter. v0.1.1: /mol:spec self-validates and negotiates <slug>.acceptance.md (the binding 'done' contract); /mol:impl refuses without both files; /mol:review is static-only and suggests runtime evaluator skills via the new evaluator-protocol; new /mol:web verifies ui_runtime acceptance criteria via whatever browser-automation MCP the user has installed. Pair with mol-agent (harness lifecycle).",
-      "version": "0.1.1",
+      "description": "Project workflow skills for molcrafts repos, organized around the planner→generator→evaluator harness pattern. 14 skills (spec, impl, litrev, arch, review, test, perf, docs, note, fix, debug, refactor, ship, web [v0.1.2]) + 14 single-axis agents. Adapts per project via mol_project frontmatter. Pair with mol-agent (harness lifecycle).",
+      "version": "0.1.2",
       "keywords": ["molecular", "workflow", "scientific-computing", "molcrafts", "harness-engineering"]
     },
     {
