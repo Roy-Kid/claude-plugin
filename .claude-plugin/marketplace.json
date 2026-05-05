@@ -5,7 +5,7 @@
     {
       "name": "mol",
       "source": "./plugins/mol",
-      "description": "Project workflow skills for molcrafts repos, organized around the planner→generator→evaluator harness pattern. 14 skills (spec, impl, litrev, arch, review, test, perf, docs, note, fix, debug, refactor, ship, web [v0.1.2]) + 14 single-axis agents. Adapts per project via mol_project frontmatter. Pair with mol-agent (harness lifecycle).",
+      "description": "Project workflow skills for molcrafts repos, organized around the planner→generator→evaluator harness pattern. 18 skills (spec, impl, litrev, arch, review, test, perf, docs, note, fix, debug, refactor, ship, web, commit, push, pr, tag) + 14 single-axis agents. Git chain /mol:pr → /mol:push → /mol:commit → /mol:ship; follows GitHub fork convention (origin = fork, upstream = canonical) with no config — /mol:tag pushes release tags only to upstream. Adapts per project via mol_project frontmatter. Pair with mol-agent (harness lifecycle).",
       "version": "0.1.2",
       "keywords": ["molecular", "workflow", "scientific-computing", "molcrafts", "harness-engineering"]
     },
@@ -19,7 +19,7 @@
     {
       "name": "mol-plugin",
       "source": "./plugins/mol-plugin",
-      "description": "Maintenance toolkit for the molcrafts marketplace itself. /mol-plugin:new-skill scaffolds new skills, /mol-plugin:check is the marketplace's structural self-audit (parallel to /mol-agent:check for project harnesses), /mol-plugin:release bumps all plugins to a single shared version and tags v<X.Y.Z>.",
+      "description": "Maintenance toolkit for the molcrafts marketplace itself. /mol-plugin:new-skill scaffolds new skills, /mol-plugin:check is the marketplace's structural self-audit (parallel to /mol-agent:check for project harnesses), /mol-plugin:release bumps all plugins to a single shared version and creates a local v<X.Y.Z> commit + tag (gated through /mol:ship commit; push the tag with /mol:tag).",
       "version": "0.1.2",
       "keywords": ["plugin-development", "molcrafts", "scaffolding", "release"]
     }

@@ -1,5 +1,5 @@
 ---
-description: Cut a unified release of the molcrafts marketplace. All plugins share one version. Bumps every plugin's plugin.json + the matching marketplace.json entries together, runs /mol-plugin:check, and prepares one commit + one tag named v<X.Y.Z>. Writes plugin.json files and marketplace.json only — never a CHANGELOG.
+description: Cut a unified release of the molcrafts marketplace. All plugins share one version. Bumps every plugin's plugin.json + the matching marketplace.json entries together, runs /mol-plugin:check, gates the commit through /mol:ship commit, and prepares one local commit + one local tag named v<X.Y.Z>. Does not push — pair with /mol:tag to push the tag to upstream and trigger GitHub Actions release. Writes plugin.json files and marketplace.json only — never a CHANGELOG.
 argument-hint: "<bump>   (bump = patch|minor|major)"
 ---
 
@@ -89,11 +89,22 @@ For every plugin under `plugins/`:
 - update its entry in `.claude-plugin/marketplace.json` with the
   same new version
 
-Stage and commit:
+Stage:
 
 ```
 git add plugins/*/.claude-plugin/plugin.json
 git add .claude-plugin/marketplace.json
+```
+
+Run the pre-commit gate by invoking `/mol:ship commit`. If the
+verdict is **BLOCK**, stop and surface the blocker. The user has
+already approved the bump in Step 6, so this skill provides its
+own commit message ("release: v<new>") and does not delegate to
+`/mol:commit` (which would re-prompt for message approval).
+
+If the gate reports **PROCEED**, commit and tag:
+
+```
 git commit -m "release: v<new>"
 git tag v<new>
 ```
@@ -101,15 +112,17 @@ git tag v<new>
 One commit, one tag, regardless of how many plugins are in the
 marketplace.
 
-Do **not** push. The user pushes themselves when they are ready.
+Do **not** push. `/mol:tag` is the dedicated push step — it
+verifies the tag is on a `release: v…` commit, refuses to push to
+`origin`, and pushes to `upstream` only.
 
 ### 8. Report
 
 One-line summary:
 `released v0.1.1 → v0.1.2 (tag v0.1.2, N plugins advanced)`
 
-Plus a one-line next-step hint: push + draft release notes on
-GitHub.
+Plus a one-line next-step hint: `/mol:tag` to push the tag to
+upstream and trigger the GitHub Actions release workflow.
 
 ## Guardrails
 
