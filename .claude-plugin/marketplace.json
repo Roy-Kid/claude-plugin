@@ -1,0 +1,27 @@
+{
+  "name": "molcrafts",
+  "owner": { "name": "MolCrafts" },
+  "plugins": [
+    {
+      "name": "mol",
+      "source": "./plugins/mol",
+      "description": "Project workflow skills for molcrafts repos, organized around the planner→generator→evaluator harness pattern. 14 skills (spec, impl, litrev, arch, review, test, perf, docs, note, fix, debug, refactor, ship, web [v0.1.1]) + 14 single-axis agents. Adapts per project via mol_project frontmatter. v0.1.1: /mol:spec self-validates and negotiates <slug>.acceptance.md (the binding 'done' contract); /mol:impl refuses without both files; /mol:review is static-only and suggests runtime evaluator skills via the new evaluator-protocol; new /mol:web verifies ui_runtime acceptance criteria via whatever browser-automation MCP the user has installed. Pair with mol-agent (harness lifecycle).",
+      "version": "0.1.1",
+      "keywords": ["molecular", "workflow", "scientific-computing", "molcrafts", "harness-engineering"]
+    },
+    {
+      "name": "mol-agent",
+      "source": "./plugins/mol-agent",
+      "description": "Per-project agent-harness lifecycle. /mol-agent:bootstrap installs CLAUDE.md + .agent/ + .claude/specs/ on first run. /mol-agent:update is the idempotent re-bootstrap (template refresh, frontmatter rescan, layout migration). /mol-agent:check audits presence + design-principles compliance.",
+      "version": "0.1.0",
+      "keywords": ["agent-harness", "molcrafts", "scaffolding", "harness-engineering"]
+    },
+    {
+      "name": "mol-plugin",
+      "source": "./plugins/mol-plugin",
+      "description": "Maintenance toolkit for the molcrafts marketplace itself. /mol-plugin:new-skill scaffolds new skills, /mol-plugin:check is the marketplace's structural self-audit (parallel to /mol-agent:check for project harnesses), /mol-plugin:release bumps versions and generates a changelog.",
+      "version": "0.1.0",
+      "keywords": ["plugin-development", "molcrafts", "scaffolding", "release"]
+    }
+  ]
+}

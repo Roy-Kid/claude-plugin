@@ -1,0 +1,10 @@
+{
+  "name": "mol",
+  "version": "0.1.1",
+  "description": "Project workflow toolkit organized around the planner→generator→evaluator harness pattern. 14 shared skills (spec, impl, litrev, arch, review, test, perf, docs, note, fix, debug, refactor, ship, web [v0.1.1]) + 14 single-axis agents (architect, tester, scientist, compute-scientist, optimizer, documenter, undergrad, pm, ci-guard, web-design, security-reviewer, janitor, reviewer, playwright-evaluator [v0.1.1]). Four-zone layering (docs / .agent / .claude / CLAUDE.md) with active-vs-passive split: notes in .agent/, specs in .claude/specs/ with checkbox-tracked Tasks, /mol:impl ticks them and deletes the spec on completion. Adapts per project via mol_project frontmatter (Atomiverse, molpy, molexp, molrs, molvis, molq, molnex). v0.1.1: /mol:spec now self-validates spec quality and negotiates the binding <slug>.acceptance.md contract in one pass — /mol:impl refuses to start without both files; /mol:review is static-only and suggests runtime evaluator skills per the new evaluator-protocol; new /mol:web skill verifies ui_runtime acceptance criteria by driving whatever browser-automation MCP the user has installed (Playwright MCP, claude-in-chrome, etc. — mol does not bundle one). Pair with mol-agent for harness install/maintenance.",
+  "author": { "name": "MolCrafts" },
+  "homepage": "https://github.com/MolCrafts/claude-plugin",
+  "repository": "https://github.com/MolCrafts/claude-plugin",
+  "license": "MIT",
+  "keywords": ["molecular", "workflow", "scientific-computing", "molcrafts", "harness-engineering"]
+}
