@@ -13,15 +13,16 @@ without re-deriving the rules.
 claude-plugin/
 ├── .claude-plugin/marketplace.json   # marketplace registry
 ├── plugins/
-│   ├── mol/                          # 14 workflow skills + 14 single-axis agents
+│   ├── mol/                          # 17 workflow skills + 16 single-axis agents
 │   │   ├── .claude-plugin/plugin.json
 │   │   ├── README.md
 │   │   ├── docs/
 │   │   │   ├── claude-md-metadata.md # mol_project frontmatter contract
 │   │   │   ├── design-principles.md  # harness layering + design rules
+│   │   │   ├── agent-design.md       # producer/reviewer split rationale
 │   │   │   └── evaluator-protocol.md # planner/generator/evaluator contract
-│   │   ├── skills/                   # 14 SKILL.md (incl. web)
-│   │   └── agents/                   # 14 agent .md (incl. playwright-evaluator)
+│   │   ├── skills/                   # 17 SKILL.md (incl. web, simplify)
+│   │   └── agents/                   # 16 agent .md (incl. debugger, spec-writer, playwright-evaluator)
 │   ├── mol-agent/                    # 3 harness-lifecycle skills
 │   │   ├── .claude-plugin/plugin.json
 │   │   ├── README.md
@@ -38,7 +39,7 @@ claude-plugin/
 
 | Plugin | Purpose |
 |---|---|
-| [`mol`](plugins/mol/README.md) | Day-to-day project work, organized around the planner→generator→evaluator harness pattern: `/mol:spec` (planner — self-validates spec quality and negotiates the binding `<slug>.acceptance.md` contract) → `/mol:impl` (generator — refuses without both files) → `/mol:review` (static evaluator) → `/mol:web` (runtime UI evaluator; uses whatever browser-automation MCP you installed). Plus `/mol:arch`, `/mol:fix`, `/mol:refactor`, `/mol:ship`, … Adapts to each project via `mol_project:` frontmatter. |
+| [`mol`](plugins/mol/README.md) | Day-to-day project work, organized around the planner→generator→evaluator harness pattern: `/mol:spec` (planner — self-validates spec quality and negotiates the binding `<slug>.acceptance.md` contract) → `/mol:impl` (generator — refuses without both files) → `/mol:review [--axis=<name>]` (unified static evaluator; aggregates 10 single-axis reviewers via the `reviewer` agent) → `/mol:web` (runtime UI evaluator; uses whatever browser-automation MCP you installed). Plus `/mol:fix`, `/mol:refactor`, `/mol:simplify` (apply janitor hygiene), `/mol:ship`, git workflow chain, …. Adapts to each project via `mol_project:` frontmatter. |
 | [`mol-agent`](plugins/mol-agent/README.md) | Harness lifecycle: `/mol-agent:bootstrap` (install), `/mol-agent:update` (idempotent re-bootstrap), `/mol-agent:check` (presence + design audit). |
 | [`mol-plugin`](plugins/mol-plugin/README.md) | Maintaining this marketplace: `/mol-plugin:new-skill`, `/mol-plugin:check` (marketplace self-audit), `/mol-plugin:release`. |
 
@@ -65,7 +66,8 @@ skills.
    (CLAUDE.md + `.agent/` for passive context + `.claude/specs/` for
    active work, plus the `mol_project:` frontmatter when you opt into
    the mol contract).
-3. Smoke-test with `/mol:arch` and `/mol-agent:check`.
+3. Smoke-test with `/mol-agent:check` (harness compliance) and
+   `/mol:review --axis=arch` (architecture).
 
 Each project's harness is rewritten in place rather than migrated in
 phases — this is continuous iteration. When the plugin is upgraded

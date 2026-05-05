@@ -57,8 +57,8 @@ in the output.
    - lint / format → `/mol:fix <file>` with the failing rule
    - failing test → `/mol:fix` (if the test was expected to pass) or
      `/mol:impl` (if the feature is incomplete)
-   - architecture violation surfaced by CI → `/mol:arch` then
-     `/mol:refactor`
+   - architecture violation surfaced by CI → `/mol:review --axis=arch`
+     then `/mol:refactor`
    - doc drift → `/mol:docs`
    - CI-config drift (matrix / secrets / runner) → ask the user to
      update `$META.ci` or the workflow file itself — never edit

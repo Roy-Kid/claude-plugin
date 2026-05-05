@@ -115,9 +115,9 @@ choreography that belongs in a skill.
 ## 3. Why This Split
 
 1. **Reusability.** Multiple skills delegate to the same agent (the
-   `architect` agent is used by `/mol:impl`, `/mol:refactor`, `/mol:arch`,
-   `/mol:review`). One source of architecture rules, read by many
-   skills.
+   `architect` agent is used by `/mol:impl`, `/mol:refactor`, and
+   `/mol:review` — directly or via `--axis=arch`). One source of
+   architecture rules, read by many skills.
 2. **Parallelism.** Review-style skills fan out to multiple agents in
    one message; agents have isolated context windows so the
    orchestrator stays small.
