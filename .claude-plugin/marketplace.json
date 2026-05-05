@@ -13,14 +13,14 @@
       "name": "mol-agent",
       "source": "./plugins/mol-agent",
       "description": "Per-project agent-harness lifecycle. /mol-agent:bootstrap installs CLAUDE.md + .agent/ + .claude/specs/ on first run. /mol-agent:update is the idempotent re-bootstrap (template refresh, frontmatter rescan, layout migration). /mol-agent:check audits presence + design-principles compliance.",
-      "version": "0.1.0",
+      "version": "0.1.2",
       "keywords": ["agent-harness", "molcrafts", "scaffolding", "harness-engineering"]
     },
     {
       "name": "mol-plugin",
       "source": "./plugins/mol-plugin",
-      "description": "Maintenance toolkit for the molcrafts marketplace itself. /mol-plugin:new-skill scaffolds new skills, /mol-plugin:check is the marketplace's structural self-audit (parallel to /mol-agent:check for project harnesses), /mol-plugin:release bumps versions and generates a changelog.",
-      "version": "0.1.0",
+      "description": "Maintenance toolkit for the molcrafts marketplace itself. /mol-plugin:new-skill scaffolds new skills, /mol-plugin:check is the marketplace's structural self-audit (parallel to /mol-agent:check for project harnesses), /mol-plugin:release bumps all plugins to a single shared version and tags v<X.Y.Z>.",
+      "version": "0.1.2",
       "keywords": ["plugin-development", "molcrafts", "scaffolding", "release"]
     }
   ]
