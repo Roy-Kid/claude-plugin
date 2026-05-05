@@ -1,0 +1,119 @@
+# Agent design — producer vs reviewer split
+
+This document explains why some `mol` agents are write-capable and
+others are read-only. The asymmetry is principled, not accidental.
+
+## Two-layer model
+
+`mol` separates concerns across two layers:
+
+| Layer | Who | Job |
+|---|---|---|
+| **Skill** (`plugins/mol/skills/<name>/SKILL.md`) | the orchestrator | parses arguments, fans out, gates with build/test, applies patches, reverts on regression, decides routing |
+| **Agent** (`plugins/mol/agents/<name>.md`) | the single-axis specialist | reads code, produces findings or content along *one* axis, returns text |
+
+Skills compose agents. Agents do not compose skills (agents call
+agents only when the called agent is itself a single-axis
+specialist).
+
+## Producer vs reviewer
+
+The 14 agents fall into two kinds, distinguished by **what their
+primary output is**:
+
+### Producer agents (write tools allowed)
+
+Their primary deliverable is **content in a file** — the artifact
+itself, not findings about an artifact.
+
+| Agent | Produces | Why writing belongs in the agent |
+|---|---|---|
+| `tester` | test code (RED tests) | the produced test *is* the verification mechanism — running it is the gate. No external orchestration needed for the write itself. |
+| `documenter` | docstrings + tutorials | docs don't change runtime behavior — zero behavioral risk. |
+| `playwright-evaluator` | screenshots / console / network logs | artifacts are evaluation by-products, not source-of-truth code. |
+
+### Reviewer agents (read-only)
+
+Their primary deliverable is **findings about content** —
+`<emoji> file:line — message` tuples. Applying findings as patches
+is workflow-level work that needs build/test gates, regression
+revert, and cross-cutting judgment — that's skill-layer concerns.
+
+| Agent | Reviews | Write-mode counterpart skill |
+|---|---|---|
+| `architect` | module boundaries / layer rules | `/mol:refactor` (with architect pre/post check) |
+| `optimizer` | perf anti-patterns | `/mol:fix` (perf-driven fix) |
+| `scientist` | equations / units / refs | `/mol:fix` (corrected math) or `/mol:spec` (refine derivation) |
+| `compute-scientist` | numerical stability / HPC | `/mol:fix` (with regression test from `tester`) |
+| `pm` | public-API ergonomics / breaking change | `/mol:refactor` (with deprecation path) |
+| `undergrad` | new-user friction | `/mol:docs` (Mode B tutorial) or `/mol:fix` (error message) |
+| `web-design` | visual / a11y / state coverage | `/mol:fix` (one fix per finding) |
+| `security-reviewer` | attack surface | `/mol:fix` (sanitize / parameterize / authorize) |
+| `janitor` | hygiene / tech debt | **`/mol:simplify`** (the dedicated cleanup applier) |
+| `ci-guard` | CI parity | `/mol:fix` / `/mol:impl` per the agent's `Suggested agent:` route |
+| `reviewer` | aggregator (findings → table + verdict) | n/a — itself a reviewer over reviewers |
+
+## Why not let `optimizer` or `janitor` write?
+
+Three reasons, in priority order:
+
+1. **The patch isn't 1:1 with the finding.** A perf finding "this
+   loop should vectorize" maps to many possible patches —
+   `np.einsum` vs explicit broadcasting vs migrating to
+   `numba` — and the right choice depends on benchmark numbers,
+   call-site context, and whether the test suite has a perf
+   guard. That's orchestration.
+
+2. **The apply step needs a gate.** Every behavior-affecting
+   change must run `$META.build.test` and revert on regression.
+   That's a skill-level loop. Letting an agent own the loop
+   conflates "expert in axis X" with "expert in our build
+   system."
+
+3. **Two layers is easier to test and refactor.** Single-axis
+   agents have a stable contract (input: scope; output:
+   findings). Skills can be rewritten without touching agents,
+   and vice versa. Adding write capability inside agents would
+   couple the layers.
+
+## Why is `tester` the exception?
+
+A test is **its own verification**. Writing a test does not
+require the orchestrator to ask "did we regress?" — the test
+*is* the regression check. So the "needs a build/test gate"
+argument doesn't apply to test files specifically.
+
+Same shape for `documenter` (docs don't affect runtime, so no
+gate needed) and `playwright-evaluator` (artifacts are
+evaluation outputs, not source).
+
+## Adding a new agent
+
+When proposing a new agent, decide which kind it is:
+
+- If its primary output is **content destined for a file under
+  source control**, and that content is **either self-verifying
+  (like a test) or behavior-neutral (like docs)** → producer
+  agent, gets `Write/Edit` tools.
+- Otherwise → reviewer agent, no write tools. Its findings flow
+  through a skill-level applier.
+
+If you find yourself writing "and then it applies the fix,"
+stop. That's a skill, not an agent.
+
+## Adding a new skill
+
+When proposing a new skill, decide whether it's:
+
+- An **applier** for an existing reviewer agent → mirrors the
+  agent's axis (e.g. `/mol:simplify` ↔ `janitor`).
+- An **orchestrator** that composes multiple agents → fan-out +
+  aggregator pattern (e.g. `/mol:review`).
+- A **gate** → read-only check that returns PROCEED / BLOCK
+  (e.g. `/mol:ship`).
+- A **runtime evaluator** → drives a live system to verify
+  acceptance criteria (e.g. `/mol:web`).
+
+The git-workflow skills (`/mol:commit`, `/mol:push`, `/mol:pr`,
+`/mol:tag`) are a fifth kind — workflow-state mutators that
+chain into gates.

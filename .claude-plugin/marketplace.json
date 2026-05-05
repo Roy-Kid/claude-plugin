@@ -5,7 +5,7 @@
     {
       "name": "mol",
       "source": "./plugins/mol",
-      "description": "Project workflow skills for molcrafts repos, organized around the planner→generator→evaluator harness pattern. 18 skills (spec, impl, litrev, arch, review, test, perf, docs, note, fix, debug, refactor, ship, web, commit, push, pr, tag) + 14 single-axis agents. Git chain /mol:pr → /mol:push → /mol:commit → /mol:ship; follows GitHub fork convention (origin = fork, upstream = canonical) with no config — /mol:tag pushes release tags only to upstream. Adapts per project via mol_project frontmatter. Pair with mol-agent (harness lifecycle).",
+      "description": "Project workflow skills for molcrafts repos, organized around the planner→generator→evaluator harness pattern. 17 skills (spec, litrev, impl, fix, refactor, simplify, review, debug, test, ship, web, docs, note, commit, push, pr, tag) + 14 single-axis agents (producer/reviewer split per docs/agent-design.md). /mol:review is the unified static reviewer — takes --axis=<name> (arch/perf/docs/ux/api/science/numerics/visual/security/hygiene); /mol:simplify is the write-mode applier for janitor hygiene findings. Git chain /mol:pr → /mol:push → /mol:commit → /mol:ship; follows GitHub fork convention (origin = fork, upstream = canonical) with no config — /mol:tag pushes release tags only to upstream. Adapts per project via mol_project frontmatter. Pair with mol-agent (harness lifecycle).",
       "version": "0.1.2",
       "keywords": ["molecular", "workflow", "scientific-computing", "molcrafts", "harness-engineering"]
     },

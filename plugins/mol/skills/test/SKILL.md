@@ -14,7 +14,9 @@ Read CLAUDE.md. Parse `mol_project:` (`$META`).
      `{path}` substituted. Otherwise run `$META.build.test`.
    - Capture pass / fail / skip counts and the list of failing tests.
 
-2. **Delegate to the `tester` agent** for test-quality analysis:
+2. **Delegate to the `tester` agent in analyze-mode** for test-quality
+   analysis (read-only — no test files written here; `/mol:impl` and
+   `/mol:fix` are the write-mode entry points). The agent inspects:
    - Are the documented test categories present (happy path, edge cases,
      immutability if the project documents immutable flow, domain
      validation if `$META.science.required`)?
