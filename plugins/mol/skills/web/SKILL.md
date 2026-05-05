@@ -1,5 +1,5 @@
 ---
-description: Frontend runtime evaluator. Reads `<slug>.acceptance.md` from `.claude/specs/`, filters criteria of `type: ui_runtime`, and verifies each by driving the running web app via whatever Playwright MCP server / browser automation plugin the user has installed. Returns a verdict per the evaluator-protocol contract. Read-only on source code; writes only artifact files (screenshots, console dumps) under `.claude/specs/<slug>.artifacts/`. Skip cleanly when no Playwright tools are available.
+description: Frontend runtime evaluator. Reads `<slug>.acceptance.md` from `.claude/specs/`, filters criteria of `type: ui_runtime`, optionally auto-starts the dev server via `mol_project.dev.command`, then verifies each criterion by driving the running web app through whatever Playwright MCP server / browser-automation plugin the user has installed. Returns a verdict per the evaluator-protocol contract. Read-only on source code; writes only artifact files (screenshots, console dumps) under `.claude/specs/<slug>.artifacts/`. Skip cleanly when no Playwright tools are available.
 argument-hint: "<spec-slug> [<criterion-id>]"
 ---
 
@@ -59,19 +59,83 @@ working set:
 
 If the working set is empty, see § Detect above.
 
-### 3. Confirm the target environment
+### 3. Resolve the target URL
 
-Show the user:
+Read the `mol_project.dev` block from CLAUDE.md (defined below
+under § Project configuration). Pick the target URL in this order:
 
-- the working set (id + summary + pass_when, one line each);
-- a question: *"Which URL is the running app at? (e.g.
-  http://localhost:5173)"*. Default to a value declared in the
-  spec under a section titled "Dev environment" or similar if
-  present.
+1. `mol_project.dev.url` if set.
+2. A URL named under a "Dev environment" section of the spec.
 
-Wait for confirmation. Cheap check: invoke the Playwright MCP
-`navigate` tool against the URL with a 5s timeout to verify it
-loads. If it does not, stop and ask the user to start the app.
+If neither is present, stop and tell the user: the project has
+not declared its dev URL — they should add `mol_project.dev.url`
+to CLAUDE.md (see § Project configuration) or include a
+"Dev environment" section in the spec.
+
+Show the user the working set (id + summary + pass_when, one line
+each) plus the resolved target URL. Then probe with the
+browser-automation MCP `navigate` tool, 5 s timeout. If the page
+loads, jump to Step 4.
+
+### 3a. Auto-start the dev server (only if the probe failed)
+
+If `mol_project.dev.command` is set, the skill brings the dev
+server up itself instead of stopping at the probe:
+
+1. Run the command in the background, capturing combined
+   stdout/stderr to a log file under `/tmp/mol-web-<slug>.log`.
+   Record the PID.
+2. Tail the log every 1 s; consider the server ready as soon as
+   the configured `ready_pattern` appears.
+3. Parse the actual URL from the ready line using the configured
+   `url_pattern` regex — many dev servers fall back to a
+   different port when the configured one is busy (e.g.
+   "port 3000 in use, using port 3001"), so the printed URL is
+   the source of truth, not `mol_project.dev.url`.
+4. Re-run the `navigate` probe against the parsed URL (5 s
+   timeout). On success, continue to Step 4 and remember the PID
+   for Step 6 cleanup. On failure or timeout (`ready_timeout`),
+   kill the PID, stop, and tell the user the auto-start command
+   did not produce a reachable URL.
+
+If `mol_project.dev.command` is **not** set and the Step 3 probe
+fails, stop and tell the user to either start the app manually or
+declare `mol_project.dev.command` in CLAUDE.md. Do not invent a
+command — CLAUDE.md is the source of truth for project-specific
+HOW.
+
+## Project configuration
+
+This skill is project-agnostic; everything project-specific lives
+in CLAUDE.md under `mol_project.dev`. None of the keys are
+mandatory, but a project that wants the auto-start path must
+declare at least `command` + `ready_pattern` + `url_pattern`.
+
+```yaml
+mol_project:
+  dev:
+    # required for Step 3 if no "Dev environment" section in the spec
+    url: <project-specific dev URL>
+
+    # required for Step 3a auto-start; the skill never invents commands
+    command: <project-specific shell command that boots the dev server>
+
+    # log line substring that means "the server is now listening"
+    ready_pattern: <project-specific marker, e.g. a server's banner string>
+
+    # regex with one capture group that extracts the actual URL from
+    # the ready line (a dev server may pick a different port than url)
+    url_pattern: <project-specific regex>
+
+    # seconds to wait for ready_pattern before giving up (default: 90)
+    ready_timeout: 90
+```
+
+Why per-project: dev-server stacks, workspace layouts (single-
+package vs monorepo subdirectory), banner strings, and the choice
+of mock vs live backend all vary across projects. The skill
+states the procedural intent ("auto-start the dev server, navigate
+to it, evaluate, clean up"); each project spells out its own HOW.
 
 ### 4. Delegate per criterion
 
@@ -112,6 +176,21 @@ Print the verdict in the evaluator-protocol shape:
 End with a one-line user-facing summary: *"<slug>: 4 ui_runtime
 criteria, 3 pass, 1 fail. See artifacts under
 .claude/specs/<slug>.artifacts/."*
+
+### 6. Cleanup
+
+If Step 3a started a dev server in this run, stop it now:
+
+```
+kill <PID>
+```
+
+Do not kill a server you didn't start — if Step 3 found one
+already reachable, it belongs to the user (or another tool) and
+must be left running.
+
+Always run cleanup, even on a skip / fail verdict, so a
+half-finished evaluation does not leave a zombie dev server.
 
 ## Guardrails
 
