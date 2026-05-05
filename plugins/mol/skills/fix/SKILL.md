@@ -13,9 +13,13 @@ Read CLAUDE.md. Parse `mol_project:` (`$META`).
    single-test form if the failure is a specific test). Confirm the
    reported symptom.
 
-2. **Diagnose.** Follow the `/mol:debug` procedure inline — classify the
-   failure (build / test / runtime), gather evidence, root-cause. Stop once
-   the root cause is identified.
+2. **Diagnose.** Delegate to the `debugger` agent with the symptom from
+   `$ARGUMENTS`. The agent classifies (build / test / runtime), gathers
+   evidence, and returns a structured report with **Root cause**, **Fix
+   recommendation**, and **Preventive measure**. Use that report as the
+   plan for Step 3 — do **not** re-derive the diagnosis in this skill's
+   context. If the report has `Open questions`, surface them and stop;
+   the user has more evidence to gather before a fix is justified.
 
 3. **Fix.** Make the minimal change that resolves the issue:
    - If the fix touches architecture boundaries, consult

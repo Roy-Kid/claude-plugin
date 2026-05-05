@@ -59,7 +59,7 @@ reach for it, and a one-line example.
 
 | Skill | What | When | Example |
 |---|---|---|---|
-| `/mol:spec` | Natural-language requirement → structured `<slug>.md` + binding `<slug>.acceptance.md` under `.claude/specs/`. Self-validates section / Tasks / RED-before-GREEN / cross-reference quality before showing you. Detects conflicts with existing specs and updates them in place when superseded. | Before starting any non-trivial implementation. | `/mol:spec add Morse bond potential to molpy` |
+| `/mol:spec` | Natural-language requirement → structured `<slug>.md` + binding `<slug>.acceptance.md` under `.claude/specs/`. Bulk drafting + self-validation (sections / atomic tasks / RED-before-GREEN / Files↔Tasks cross-reference) is delegated to the `spec-writer` subagent so parent context stays small. Skill orchestrates conflict detection, user approval, and persistence. Detects conflicts with existing specs and updates them in place when superseded. | Before starting any non-trivial implementation. | `/mol:spec add Morse bond potential to molpy` |
 | `/mol:litrev` | Literature + reference-implementation review (gated on `mol_project.science.required`). Returns equations, validation targets, open questions. | Before specifying a domain-critical feature. | `/mol:litrev Nose-Hoover thermostat` |
 
 ### 2 — Implement (writes code)
@@ -67,7 +67,7 @@ reach for it, and a one-line example.
 | Skill | What | When | Example |
 |---|---|---|---|
 | `/mol:impl` | Full TDD workflow gated on an approved spec + acceptance contract. Resume-syncs already-done tasks before writing new code. Ticks the spec's checkboxes as it progresses; deletes the spec + acceptance + INDEX entry on completion. | After `/mol:spec` is `status: approved`. | `/mol:impl morse-bond` |
-| `/mol:fix` | Minimal-diff bug fix — reproduce, diagnose, patch the smallest surface, verify. Calls `tester` for a regression test when the root cause suggests a missing one. | When a test fails or a bug is reported. | `/mol:fix energy NaN at zero distance` |
+| `/mol:fix` | Minimal-diff bug fix — reproduce, delegate diagnosis to `debugger` subagent (Step 2), patch the smallest surface, verify. Calls `tester` for a regression test when the root cause suggests a missing one. | When a test fails or a bug is reported. | `/mol:fix energy NaN at zero distance` |
 | `/mol:refactor` | Restructure code while preserving all architectural invariants. Snapshot → incremental change → re-verify. Calls `architect` pre and post. | When the structure needs to change but behavior must not. | `/mol:refactor split forces module by backend` |
 | `/mol:simplify` | Apply `janitor`'s hygiene findings as the write-mode counterpart — dead code, debug residue, magic-literal substitution, captured-rule naming drift. Behavior-preserving by contract; reverts the whole batch if any test regresses. | After `/mol:impl` finishes, before `/mol:commit`, to strip cruft accumulated during exploration. | `/mol:simplify` |
 
@@ -76,7 +76,7 @@ reach for it, and a one-line example.
 | Skill | What | When | Example |
 |---|---|---|---|
 | `/mol:review` | The unified multi-axis static reviewer. Fans out to up to 10 single-axis agents, hands findings to the `reviewer` agent for the table + verdict. Use `--axis=<name>` to scope to one dimension: `arch`, `perf`, `docs`, `ux`, `api`, `science`, `numerics`, `visual`, `security`, `hygiene`. Surfaces runtime evaluator handoffs (`/mol:web`, etc.) when an `acceptance.md` is in scope. | Before commit / push / PR; or when you want one specific axis checked. | `/mol:review` &nbsp;·&nbsp; `/mol:review --axis=security` &nbsp;·&nbsp; `/mol:review morse-bond` |
-| `/mol:debug` | Diagnose-only — never writes code. Classifies the failure (build / test / runtime), gathers evidence, names a root cause and a fix recommendation. | When a failure is mysterious and you want a clean diagnosis before patching. | `/mol:debug segfault in dipole kernel` |
+| `/mol:debug` | Diagnose-only — never writes code. Thin wrapper around the `debugger` subagent: classifies the failure (build / test / runtime), gathers evidence, returns root cause + fix recommendation + preventive-test idea. | When a failure is mysterious and you want a clean diagnosis before patching. | `/mol:debug segfault in dipole kernel` |
 | `/mol:test` | Run the suite via `mol_project.build.test`; delegate to `tester` in **analyze-mode** for category coverage and tolerance discipline. (Test *writing* lives in `/mol:impl` and `/mol:fix`.) | When you want to know the state of the suite + what categories are missing. | `/mol:test` &nbsp;·&nbsp; `/mol:test tests/forces/` |
 | `/mol:ship <tier>` | Three-tier CI-parity gate (`commit` ⊆ `push` ⊆ `merge`). Reports PROCEED or BLOCK and routes blockers to the right write-mode skill. Read-only — never edits. | The gates underneath `/mol:commit`, `/mol:push`. Run manually before a `merge` to mirror remote CI locally. | `/mol:ship merge` |
 
@@ -154,11 +154,13 @@ Each owns one expertise axis. They split into two kinds —
 | Agent | Kind | Axis |
 |---|---|---|
 | `architect` | reviewer | Module boundaries, layer rules, dependency graph |
-| `tester` | producer (write) / reviewer (analyze) — dual-mode | TDD red-before-green (write-mode); coverage gaps + tolerance discipline (analyze-mode) |
+| `debugger` | reviewer | Failure root cause + fix recommendation + preventive-test idea (used by `/mol:debug` standalone, and by `/mol:fix` Step 2 to diagnose before patching) |
+| `tester` | producer-write (write-mode) / reviewer (analyze-mode) — dual-mode | TDD red-before-green (write-mode); coverage gaps + tolerance discipline (analyze-mode) |
 | `scientist` | reviewer | Equations, units, conservation, literature (every claim cites a fetched-this-run reference or derives inline) |
 | `compute-scientist` | reviewer | Numerical stability, complexity, determinism, HPC / DDP readiness |
 | `optimizer` | reviewer | Hot-path performance. Detects per-file which catalog applies (numpy / pytorch / cuda / simd-xsimd / wasm-bridge / subprocess / async-io / web-render). |
-| `documenter` | producer (Mode B) / reviewer (Mode A) | Docstrings + narrative docs; audience locked to a capable but uninitiated undergraduate |
+| `documenter` | producer-write (Mode B) / reviewer (Mode A) | Docstrings + narrative docs; audience locked to a capable but uninitiated undergraduate |
+| `spec-writer` | producer-return | Drafts spec body + acceptance.md given a parsed requirement; self-validates against quality checklist; returns markdown text — `/mol:spec` persists after user approval |
 | `undergrad` | reviewer | User's-perspective: API, onboarding, extension ergonomics, error messages |
 | `pm` | reviewer | Public-surface discipline, breaking-change analysis, downstream integration contracts |
 | `ci-guard` | reviewer | CI-parity: detects CI config, runs tiered local equivalent |
@@ -166,7 +168,7 @@ Each owns one expertise axis. They split into two kinds —
 | `security-reviewer` | reviewer | Adversarial-input — shell / SQL / path / SSRF / prompt injection, deserialization, secret leakage, missing authorization. Self-skips files outside the attack-surface signal set. |
 | `janitor` | reviewer | Continuous tech-debt servicing — applies the project's captured `.agent/` aesthetic rules to every diff. Pays down debt a little every review. |
 | `reviewer` | reviewer | Multi-axis aggregator — collects findings from the other reviewers into a severity table, resolves conflicts, renders the verdict. |
-| `playwright-evaluator` | producer (artifacts) | Verifies one `ui_runtime` acceptance criterion against a running app via whatever browser-automation MCP is installed. |
+| `playwright-evaluator` | producer-write (artifacts) | Verifies one `ui_runtime` acceptance criterion against a running app via whatever browser-automation MCP is installed. |
 
 Review-style agents emit `<emoji> file:line — message` using 🚨 Critical,
 🔴 High, 🟡 Medium, 🟢 Low. Verdict: any 🚨 → BLOCK; any 🔴 → REQUEST

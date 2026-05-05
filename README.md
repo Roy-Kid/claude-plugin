@@ -13,7 +13,7 @@ without re-deriving the rules.
 claude-plugin/
 ├── .claude-plugin/marketplace.json   # marketplace registry
 ├── plugins/
-│   ├── mol/                          # 17 workflow skills + 14 single-axis agents
+│   ├── mol/                          # 17 workflow skills + 16 single-axis agents
 │   │   ├── .claude-plugin/plugin.json
 │   │   ├── README.md
 │   │   ├── docs/
@@ -22,7 +22,7 @@ claude-plugin/
 │   │   │   ├── agent-design.md       # producer/reviewer split rationale
 │   │   │   └── evaluator-protocol.md # planner/generator/evaluator contract
 │   │   ├── skills/                   # 17 SKILL.md (incl. web, simplify)
-│   │   └── agents/                   # 14 agent .md (incl. playwright-evaluator)
+│   │   └── agents/                   # 16 agent .md (incl. debugger, spec-writer, playwright-evaluator)
 │   ├── mol-agent/                    # 3 harness-lifecycle skills
 │   │   ├── .claude-plugin/plugin.json
 │   │   ├── README.md

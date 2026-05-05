@@ -1,5 +1,5 @@
 ---
-description: Convert a natural-language requirement into a structured technical spec under .claude/specs/, with a checkbox-tracked Tasks section, then negotiate the binding `<slug>.acceptance.md` contract that defines "done". Self-validates spec quality (sections / atomic tasks / RED-before-GREEN / Files↔Tasks cross-reference) before showing the user. Detects conflicts with existing specs and updates the old spec body + regenerates acceptance criteria when superseded or refined. Writes specs and acceptance files (and amends old ones during conflict resolution). Supports Chinese and English.
+description: Convert a natural-language requirement into a structured technical spec under .claude/specs/, with a checkbox-tracked Tasks section, then negotiate the binding `<slug>.acceptance.md` contract that defines "done". The bulk drafting + self-validation is delegated to the `spec-writer` agent (subagent context, not parent); this skill orchestrates conflict detection, user approval, and persistence. Detects conflicts with existing specs and updates the old spec body + regenerates acceptance criteria when superseded or refined. Writes specs and acceptance files (and amends old ones during conflict resolution). Supports Chinese and English.
 argument-hint: "<feature description>"
 ---
 
@@ -43,243 +43,117 @@ Where specs do **not** belong:
 - `.agent/` — passive context (notes, decisions, debt). Specs are
   not passive; they are active runtime tasks.
 
-The repository should hold one live spec per design decision. When a
-spec finishes, the decisions worth keeping have already been written
-into code, tests, and (if non-obvious) `.agent/notes.md`.
-
 ## Procedure
 
 ### 1. Parse the request
 
 What capability is being added? Which layer / package / crate is
-affected? State this in one sentence before going further.
+affected? Derive the kebab-case slug. State this in one sentence
+before going further.
 
 ### 2. Search domain basis (if applicable)
 
 If physics is involved AND `$META.science.required` is `true`,
 delegate to the `scientist` agent for equations, references, and
-validation targets.
+validation targets. Capture the scientist's output verbatim — it
+becomes input to `spec-writer` in Step 5.
 
 ### 3. Conflict check (MANDATORY before any write)
 
 Read every existing spec under `$META.specs_path`. For the new
 request, classify against each existing spec:
 
-- **Duplicate.** The existing spec already covers this scope → tell
-  the user, don't add a sibling.
+- **Duplicate.** The existing spec already covers this scope →
+  tell the user, don't add a sibling.
 
-- **Supersede / refine.** The new request changes, expands, or fixes
-  the design of an existing spec (the user found a gap, a better
-  approach, a missing edge case) → **update the old spec in place**,
-  do not create a sibling. Specifically:
-  1. Update the affected sections of the old spec body (Summary,
-     Design, Files, Testing strategy as relevant).
-  2. **Recompute the Tasks checklist**:
-     - Items still valid AND already done → keep `[x]`.
-     - Items still valid AND not yet done → keep `[ ]`.
-     - Items invalidated by the new design → **remove** them
-       (don't just leave them stranded).
-     - Items where prior work needs redoing → restore to `[ ]` and
-       add a `(rework: <why>)` note on the line.
-     - Genuinely new tasks → add as `[ ]` at the bottom.
-  3. Bump the frontmatter `revised: YYYY-MM-DD`. Do not change
-     `created`.
-  4. **Regenerate `{slug}.acceptance.md`** from scratch against the
-     new Tasks list (Step 7 below). The previous acceptance was
-     negotiated against the old design and is stale; criteria ids
-     restart at `ac-001` for the new contract.
-  5. Tell the user explicitly which old items were unchecked, which
-     were removed, and which were added. The user must see the
-     diff before approving.
+- **Supersede / refine.** The new request changes, expands, or
+  fixes the design of an existing spec → **update the old spec
+  in place**, do not create a sibling. Read the old spec body
+  in full; you will pass it to `spec-writer` so it can reconcile
+  the Tasks list.
 
-- **Independent.** Different scope from any existing spec → safe to
-  create a new file.
+- **Independent.** Different scope from any existing spec → safe
+  to create a new file.
 
-Never create a sibling spec for a supersede / refine. If you find
-yourself wanting to create `morse-bond-v2.md` next to
-`morse-bond.md`, that's the wrong move — update `morse-bond.md`.
+State the classification before continuing. Never create a
+sibling spec for a supersede / refine. If you find yourself
+wanting to create `morse-bond-v2.md` next to `morse-bond.md`,
+that's the wrong move — feed both into `spec-writer` with
+`conflict_decision: supersede:morse-bond`.
 
 ### 4. Scan interaction points
 
-Glob the project root for files relevant to `$META.language`. Identify
-the closest existing pattern. Flag any new public API, data-model
-change, or cross-layer dependency.
+Glob the project root for files relevant to `$META.language`.
+Identify the closest existing pattern. Flag any new public API,
+data-model change, or cross-layer dependency. Capture as
+structured input for `spec-writer`.
 
-### 5. Draft the spec body
+### 5. Delegate drafting to `spec-writer`
 
-Sections every spec must have:
+Invoke the `spec-writer` agent with a structured prompt
+containing:
 
-- **Summary** — 1 paragraph, plain prose.
-- **Domain basis** — equations, references with DOI/arXiv, units (if
-  `$META.science.required`).
-- **Design** — entities touched, new symbols, lifecycle / ownership.
-- **Files to create or modify** — bulleted file paths.
-- **Tasks** — checkbox-tracked subtasks (see below). **This section is
-  mandatory.**
-- **Testing strategy** — happy path, edge cases, domain validation.
-- **Out of scope** — what this spec does not do.
+- `request` — the user's requirement (preserve language).
+- `scope_layer` — from Step 1.
+- `scientist_output` — from Step 2 (or empty).
+- `conflict_decision` — `independent` or `supersede:<slug>`
+  (with the old spec body inlined when supersede).
+- `interaction_points` — from Step 4.
+- `slug` — from Step 1.
 
-### 6. Tasks (the implementation tracker)
+The agent drafts the spec body (Summary / Domain basis / Design
+/ Files / Tasks / Testing strategy / Out of scope), self-validates
+against the quality checklist (sections / atomic tasks /
+RED-before-GREEN / Files↔Tasks cross-reference), and proposes
+acceptance criteria. It returns two markdown blocks plus a
+status line; **it does not write to disk**.
 
-This is the heart of the spec. `/mol:impl` ticks these as it
-progresses; when every task is `[x]` and the test/check suites pass,
-`/mol:impl` deletes the spec.
+Branch on the agent's `Status:`:
 
-Format:
+- `Status: ok` — proceed to Step 6.
+- `Status: blocked` — surface the failed items to the user with
+  the question: *"I cannot satisfy <items>; do you want to
+  relax X, or refine the request?"* Stop until the user
+  responds; on response, re-invoke `spec-writer` from Step 5.
+- `Status: split-needed` — show the proposed cut to the user
+  and ask if they want to spec the parts separately. If yes,
+  re-invoke once per part.
 
-```markdown
-## Tasks
+For supersede flows the agent additionally returns a `Diff vs.
+previous spec` block; you will surface that diff in Step 6 so
+the user sees what was unchecked, removed, and added before
+approving.
 
-- [ ] Write failing tests for <component> (<path/to/test_file>)
-- [ ] Implement <symbol> in <path>
-- [ ] Add docstring per <doc.style> with units
-- [ ] Verify against <validation case>
-- [ ] Run full check + test suite
-```
+### 6. Show, confirm, persist
 
-Rules for the Tasks section:
+Show the user **both** files (spec body + acceptance) in the
+same turn, exactly as `spec-writer` returned them. Call out:
 
-- Each item is **concrete, atomic, and checkable**. No "implement
-  everything"; no aspirational items.
-- Aim for 4–10 tasks. If a spec needs more than ~12, split it into
-  two specs.
-- Keep verbs first ("Write…", "Implement…", "Verify…") so the list
-  reads as a procedure.
-- Write the tests-first task before any implementation task — RED
-  before GREEN (W2).
-- The last task is usually "Run full check + test suite" so the
-  verification step is itself tracked.
-
-### 7. Self-validate the spec body (internal quality gate)
-
-Before showing anything to the user, walk the drafted body with
-this checklist. Every failure is a blocker for *this draft attempt*
-— silently revise and re-check up to 3 times. If the third revision
-still fails, surface the failed items to the user with a question:
-*"I cannot satisfy <items>; do you want to relax X, or refine the
-request?"*
-
-Required sections (MUST exist and be non-empty):
-
-- [ ] **Summary** — one paragraph; states the user-visible outcome.
-- [ ] **Design** — entities, lifecycle, ownership; not just a
-  restatement of Summary.
-- [ ] **Files to create or modify** — every path is concrete (no
-  glob like "various test files"). Paths exist on disk OR are
-  marked as new.
-- [ ] **Tasks** — present and non-empty.
-- [ ] **Testing strategy** — happy path, edge cases, and (if
-  `$META.science.required`) domain validation are explicitly
-  enumerated.
-- [ ] **Out of scope** — present, even if "none". An empty section
-  is a smell.
-
-Required for Tasks (each item):
-
-- [ ] Verb-first ("Write…", "Implement…", "Verify…").
-- [ ] Concrete and atomic (one observable change).
-- [ ] References a file path or symbol where the work lands.
-- [ ] **RED-before-GREEN ordering** — every "Write failing tests
-  for X" task precedes its corresponding "Implement X" task.
-- [ ] Total count is 4–12.
-
-Required for cross-references:
-
-- [ ] Every file in **Files to create or modify** appears in at
-  least one Tasks item.
-- [ ] Domain references (DOI / arXiv) present iff
-  `$META.science.required` and the spec declares physics.
-
-### 8. Negotiate acceptance criteria (the binding "done" contract)
-
-Walk the validated spec section by section and propose
-`<slug>.acceptance.md` — the observable projection of the spec.
-Every Task and every behavior in Testing strategy that matters
-for "done" gets a criterion. Format defined in
-`plugins/mol/docs/evaluator-protocol.md`.
-
-For each candidate criterion, decide:
-
-#### `id`
-
-`ac-001`, `ac-002`, … in order of appearance in the spec. Stable
-identifier: once written, ids do not renumber on minor refinement
-(supersede / refine restarts at `ac-001` because the spec body
-itself was rewritten).
-
-#### `summary`
-
-≤80 chars, imperative or stative. *"Workspace.load reads v0.4
-JSON layouts"* not *"Backwards compatibility"*.
-
-#### `type`
-
-Pick the **narrowest type that suffices**:
-
-| Spec signal                                       | Type            |
-|---------------------------------------------------|-----------------|
-| pure logic, no side effects                       | `code`          |
-| invokes CLI / FastAPI / shell / subprocess        | `runtime`       |
-| user-visible UI behavior, click / route / render  | `ui_runtime`    |
-| numerical match against reference data            | `scientific`    |
-| time / memory / throughput threshold              | `performance`   |
-| docstring / generated docs / link integrity       | `docs`          |
-
-If a criterion crosses categories, split it into multiple criteria.
-A single Task may spawn 2–3 criteria.
-
-#### `evaluator_hint` (optional)
-
-Soft preference. For `ui_runtime`, default to `mol:web` if the
-project has a frontend. Never hard-bind — the user / orchestrator
-may pick differently.
-
-#### `pass_when`
-
-A single observable condition. Test it:
-
-- Could a third-party evaluator answer yes/no without rereading
-  the spec? If no, rewrite.
-- Does it name a fixture, file, threshold, or visible state? If
-  no, rewrite.
-- Bad: *"Implementation is correct."*
-- Good: *"`pytest tests/workspace/test_load.py::test_v04_layout`
-  passes against the fixture in `tests/fixtures/ws_v04/`."*
-
-### 9. Show, confirm, persist
-
-Show the user **both** files in the same turn:
-
-- the spec body
-- the proposed `acceptance.md` (criteria table: id, type,
-  pass_when truncated)
-
-Call out:
-
-- criteria you derived from Testing strategy (easy to miss)
-- spec items you deliberately did **not** turn into criteria, with
-  one-line reason
+- the criteria derived from Testing strategy (easy to miss),
+- spec items deliberately not turned into criteria, with a
+  one-line reason,
+- (supersede) the diff against the previous spec.
 
 Wait for explicit approval. Edits — adding/removing/retyping
-criteria, tightening `pass_when`, moving items to `out_of_scope` —
-are all acceptable. Apply, re-show, re-confirm.
+criteria, tightening `pass_when`, moving items to
+`out_of_scope` — are acceptable. If the user requests changes,
+either:
+
+- apply them inline if they're surface tweaks (rename a
+  criterion id, sharpen a pass_when), or
+- if they materially change the design (new task, removed
+  file, retyped criterion), re-invoke `spec-writer` with the
+  amended request.
 
 After approval:
 
-1. Write `{$META.specs_path}{slug}.md` (kebab-case slug:
-   `morse-bond`, `nose-hoover`, `amber-prmtop-reader`).
+1. Write `{$META.specs_path}{slug}.md` with the spec body the
+   agent returned. For supersede, this overwrites the old
+   file; bump `revised: YYYY-MM-DD` in the frontmatter (do
+   not change `created`).
 
-   ```markdown
-   ---
-   title: <spec title>
-   status: approved
-   created: YYYY-MM-DD
-   # revised: YYYY-MM-DD   # added only on supersede/refine
-   ---
-   ```
-
-2. Write `{$META.specs_path}{slug}.acceptance.md` per the schema
-   in `plugins/mol/docs/evaluator-protocol.md`.
+2. Write `{$META.specs_path}{slug}.acceptance.md` per the
+   schema in `plugins/mol/docs/evaluator-protocol.md`.
 
 3. Update `{$META.specs_path}INDEX.md`:
 
@@ -289,23 +163,23 @@ After approval:
    - [{slug}]({slug}.md) — <one-line summary> [approved]
    ```
 
-   On supersede/refine, update the entry in place. When `/mol:impl`
-   finishes a spec, it removes the entry.
+   On supersede/refine, update the entry in place. When
+   `/mol:impl` finishes a spec, it removes the entry.
 
-If the user asks to defer approval (*"let me think about it"*),
+If the user defers approval (*"let me think about it"*),
 write the spec with `status: draft` and skip writing
-`acceptance.md` — when they come back, re-invoke `/mol:spec` on
-the same slug to resume from this step.
+`acceptance.md`. Re-invoking `/mol:spec` on the same slug
+resumes from Step 5 (which will re-invoke `spec-writer`).
 
-### 10. Report
+### 7. Report
 
 Print:
 
 - spec path + acceptance path
 - task count (e.g. *"7 tasks; 0 completed"*)
 - criteria count, broken down by `type`
-- one-line note flagging which criteria need a runtime evaluator
-  (any `type` other than `code` / `docs`). Example:
+- one-line note flagging which criteria need a runtime
+  evaluator (any `type` other than `code` / `docs`). Example:
   *"3 ui_runtime criteria — invoke `/mol:web <slug>` after
   `/mol:impl` finishes."*
 - for supersede flows: a short diff (what changed, what was
@@ -324,15 +198,29 @@ End with a one-line user-facing summary.
   the spec file, the INDEX entry, and `<slug>.acceptance.md` on
   its way out.
 
-The deleted state is intentional. Once a spec is `done`, the
-information that mattered has been encoded into code, tests, and
-(when non-obvious) `.agent/notes.md`. Keeping a paper trail of done
-specs would clutter the repo without adding signal — that is what
-git history is for.
+## Why drafting is delegated
+
+The bulk of `/mol:spec`'s work — drafting prose, listing files,
+breaking the work into atomic tasks, walking the self-validation
+checklist, proposing acceptance criteria — is one long generative
+pass. Doing that in the parent context burns tokens that the
+ensuing `/mol:impl` run (and the rest of the conversation) needs.
+The `spec-writer` subagent runs in its own context window and
+returns only the finished markdown. The parent retains the
+result, not the drafting trail.
+
+The user-interaction parts (conflict triage, approval gate,
+persistence, INDEX update) stay in the parent because they
+require dialogue with the user and atomic file-system writes —
+neither fits a one-shot subagent.
+
+See `plugins/mol/docs/agent-design.md` for the full producer /
+reviewer / drafter classification.
 
 ## Bilingual
 
-If the user argument is in Chinese, produce the spec body in Chinese.
-Keep the frontmatter keys, INDEX entry, and the verb-prefix of each
-Tasks line in English so `/mol:impl` and downstream tooling can parse
-the checklist deterministically.
+If the user argument is in Chinese, `spec-writer` produces the
+spec body in Chinese; the frontmatter keys, INDEX entry, and
+the verb-prefix of each Tasks line stay in English so
+`/mol:impl` and downstream tooling parse the checklist
+deterministically.
