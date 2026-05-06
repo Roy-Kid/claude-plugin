@@ -22,7 +22,7 @@ For local development:
 |---|---|
 | `/mol-plugin:new-skill` | Scaffold a new skill in any plugin (`mol`, `mol-agent`, `mol-plugin`). Creates one SKILL.md with the project's frontmatter shape and a skeletal procedure. Does not edit READMEs or `plugin.json`. |
 | `/mol-plugin:check` | The marketplace's self-audit. Structural check across the whole marketplace: `marketplace.json`, every `plugin.json`, every `SKILL.md`, every agent. Parallel to `/mol-agent:check`, but for the plugin source rather than a project's harness. Read-only. |
-| `/mol-plugin:release` | Version bump (patch/minor/major) + changelog generation (grouped by conventional-commit type) + git commit + tag. Does not push. |
+| `/mol-plugin:release` | Unified version bump (patch/minor/major) — advances *every* plugin's `plugin.json` and the matching `marketplace.json` entries to one shared version, gates the commit through `/mol:ship commit`, and produces one local commit + one local `v<X.Y.Z>` tag. Does not push (pair with `/mol:tag`). Does not write a CHANGELOG — release notes live on the GitHub release and in `git log`. |
 
 ## Workflow
 
@@ -31,8 +31,8 @@ For local development:
 # author the skill body
 /mol-plugin:check
 # fix anything red
-/mol-plugin:release mol minor
-# review the diff, push when ready
+/mol-plugin:release minor   # bumps every plugin to one shared version
+/mol:tag                    # push the v<X.Y.Z> tag to upstream
 ```
 
 ## License

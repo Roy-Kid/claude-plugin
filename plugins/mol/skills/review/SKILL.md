@@ -1,6 +1,6 @@
 ---
 description: Multi-axis static code review — fans out to single-axis review agents, collects their findings, hands them to the `reviewer` agent for aggregation + verdict. **Static only**; runtime evaluation (Playwright / benchmarks / numerical oracles) is suggested via `acceptance.md` `type` fields and dispatched manually to runtime-evaluator skills like `/mol:web`, per `plugins/mol/docs/evaluator-protocol.md`. Read-only. Supports `--axis=<name>` to scope to a single review dimension.
-argument-hint: "[path or list of modified files] [--axis=<name>] | [<spec-slug>]"
+argument-hint: "[<path-or-spec-slug>] [--axis=<name>]"
 ---
 
 # /mol:review — Multi-Axis Code Review

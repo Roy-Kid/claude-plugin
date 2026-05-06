@@ -59,6 +59,7 @@ reach for it, and a one-line example.
 
 | Skill | What | When | Example |
 |---|---|---|---|
+| `/mol:discuss <topic>` | Free-form design / improvement / scientific-insight discussion. Frames the topic, drives toward convergence with an explicit per-turn `Convergence pulse`, and exits one of two ways: **converge** → packages a one-paragraph requirement and tells the user to invoke `/mol:spec` on it; **discard** → leaves no artifacts. Hard 8-turn cap. Read-only. Pairs upstream of `/mol:spec`. | When the requirement isn't yet clear enough for `/mol:spec` and you want to think it through with the agent. | `/mol:discuss should /mol:web own remote dev servers?` |
 | `/mol:spec` | Natural-language requirement → structured `<slug>.md` + binding `<slug>.acceptance.md` under `.claude/specs/`. Bulk drafting + self-validation (sections / atomic tasks / RED-before-GREEN / Files↔Tasks cross-reference) is delegated to the `spec-writer` subagent so parent context stays small. Skill orchestrates conflict detection, user approval, and persistence. Detects conflicts with existing specs and updates them in place when superseded. | Before starting any non-trivial implementation. | `/mol:spec add Morse bond potential to molpy` |
 | `/mol:litrev` | Literature + reference-implementation review (gated on `mol_project.science.required`). Returns equations, validation targets, open questions. | Before specifying a domain-critical feature. | `/mol:litrev Nose-Hoover thermostat` |
 
@@ -84,7 +85,7 @@ reach for it, and a one-line example.
 
 | Skill | What | When | Example |
 |---|---|---|---|
-| `/mol:web <slug>` | Frontend runtime evaluator. Reads `<slug>.acceptance.md`, picks `type: ui_runtime` criteria, optionally auto-starts the dev server via `mol_project.dev.command`, drives whatever Playwright MCP / browser-automation plugin you installed, returns per-criterion verdicts + screenshots / console / network artifacts. Self-skips when no Playwright MCP is reachable. | After `/mol:impl` finishes a UI feature with `ui_runtime` criteria. | `/mol:web spec-tree-view` |
+| `/mol:web <slug>` | Frontend runtime evaluator. Reads `<slug>.acceptance.md`, picks `type: ui_runtime` criteria, starts the dev server via `mol_project.dev.command` and parses the URL from its ready banner, drives whatever Playwright MCP / browser-automation plugin you installed, returns per-criterion verdicts + screenshots / console / network artifacts. Self-skips when no Playwright MCP is reachable. | After `/mol:impl` finishes a UI feature with `ui_runtime` criteria. | `/mol:web spec-tree-view` |
 
 ### 5 — Documentation & knowledge
 

@@ -40,8 +40,18 @@ For each `plugins/<plugin>/skills/<skill>/SKILL.md`:
 
 - YAML frontmatter parses
 - `description` is present and non-empty
-- `argument-hint` is present (even if `""`); shape is one of
-  `"<arg>"`, `"[arg]"`, `"<arg1> <arg2>"`, `"[arg1] [arg2]"`
+- `argument-hint` is present (even if `""`); the shape is built
+  from these primitives, in any combination:
+  - `<arg>` — a required positional placeholder; `arg` may be a
+    short prose hint (`<feature description>`) or a `|`-alternation
+    of literal values (`<commit | push | merge>`)
+  - `[arg]` — an optional positional placeholder; same content
+    rules as above
+  - `[<arg>]` and `<arg> [<arg>]` are explicit composites of the
+    above and are allowed
+  - whitespace separates positional slots; do not embed
+    parenthetical annotations inside the hint (move explanation
+    into the procedure body instead)
 - the H1 heading is `# /<plugin>:<skill> — <title>` and matches the
   directory name
 - the file ends with the standard one-line summary convention
