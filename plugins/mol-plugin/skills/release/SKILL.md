@@ -83,6 +83,25 @@ Wait for go-ahead.
 
 ### 7. Apply
 
+**Switch to a release branch first.** The release commit and tag
+live on a dedicated `release/v<new>` branch, not on `master`.
+Two reasons:
+
+- `/mol:push` (correctly) refuses to push the default branch from
+  a fork. Releasing on master would force a bypass every release.
+- Master stays untouched until the PR is merged, so a botched
+  release is just a deletable branch — no `git reset --hard
+  upstream/master` needed.
+
+```
+git switch -c release/v<new>
+```
+
+If `release/v<new>` already exists locally, stop. That means a
+previous release attempt for this version is in flight or was
+abandoned without cleanup. The user must delete it explicitly
+(`git branch -D release/v<new>`) and re-run.
+
 For every plugin under `plugins/`:
 
 - write its `plugin.json` with the new version
@@ -102,15 +121,15 @@ already approved the bump in Step 6, so this skill provides its
 own commit message ("release: v<new>") and does not delegate to
 `/mol:commit` (which would re-prompt for message approval).
 
-If the gate reports **PROCEED**, commit and tag:
+If the gate reports **PROCEED**, commit and tag (on the release
+branch):
 
 ```
 git commit -m "release: v<new>"
 git tag v<new>
 ```
 
-One commit, one tag, regardless of how many plugins are in the
-marketplace.
+One commit, one tag, on `release/v<new>`. Master is untouched.
 
 Do **not** push. The release commit and the tag stay local; the
 publish phase is the user's next step (see § 8).
@@ -126,11 +145,24 @@ matter, and the order is load-bearing:
 ```
 Next steps to publish v<new>:
 
-  1. /mol:push                 # push master to origin (your fork)
+  (you are on release/v<new>; master is untouched)
+
+  1. /mol:push                 # push release/v<new> to origin (fork)
   2. /mol:pr                   # open PR origin → upstream/master
   3. (wait for PR to merge into upstream/master)
   4. /mol:tag                  # push the tag — refuses if step 3
                                # hasn't happened (orphan-tag guard)
+  5. cleanup:
+       git switch master
+       git pull upstream master
+       git branch -d release/v<new>
+
+A note on merge style for step 3: a *merge-commit* style merge
+preserves your local tag's commit SHA, so step 4 just works. A
+*squash* or *rebase* merge produces a different SHA on
+upstream/master, making the local tag orphan; /mol:tag's
+orphan-tag guard detects this and prints a retag recovery path.
+Pick merge-commit style if you can.
 
 Why both halves: the marketplace.json version bump lives in the
 release *commit*. If you only push the tag, the release tarball
@@ -142,8 +174,9 @@ Actions release workflow.
 ```
 
 Single-remote layouts (no `upstream`) collapse steps 1–3 to a
-single `git push` to the canonical repo's default branch, but the
-two phases (branch then tag) still apply.
+single `git push` to the canonical repo's default branch (still
+from `release/v<new>`, then fast-forward master to it locally),
+but the two phases (branch then tag) still apply.
 
 ## Guardrails
 

@@ -64,7 +64,12 @@ first or pass an explicit tag name."
   automation.
 - The tag is **not** already on `<release-remote>`. If it is,
   stop. This skill never overwrites an existing remote tag; the
-  user must delete the upstream tag manually first.
+  user must delete the upstream tag manually first
+  (`git push <release-remote> :refs/tags/<tag>`). A common reason
+  this fires: a previous push left an orphan tag pointing at a
+  pre-merge commit, and the PR was then squash- or rebase-merged
+  — see the orphan-tag-guard recovery below (path B) for the full
+  retag-and-republish dance.
 - **Reachability (orphan-tag guard).** The tag's commit is reachable
   from `<release-remote>`'s default branch. Resolve the default
   branch as `<release-remote>/HEAD` (or fall back to
@@ -83,24 +88,42 @@ first or pass an explicit tag name."
   on the default branch, which is exactly the inconsistency the
   publish flow is supposed to prevent.
 
-  Tell the user the recovery path explicitly:
+  Tell the user the recovery path explicitly. Three cases,
+  depending on what state the release is in:
 
   ```
-  Tag <tag> points at <short-sha> which is not on
-  <release-remote>/<default-branch>. Publish the branch first:
+  Tag <tag> points at <short-sha> which is not reachable from
+  <release-remote>/<default-branch>.
 
-    /mol:push      # master → origin (your fork)
-    /mol:pr        # open PR origin → upstream
-    (merge the PR)
-    /mol:tag <tag> # re-run
+  A. Branch hasn't been merged yet — publish it first.
+       /mol:push      # release branch → origin (fork)
+       /mol:pr        # PR origin → upstream
+       (merge the PR; prefer *merge-commit* style — see B)
+       /mol:tag <tag> # re-run
 
-  Override (only if you intentionally want an orphan tag — rare,
-  e.g. cherry-picked hotfix tag): re-run with explicit
-  confirmation.
+  B. Branch was squash-merged or rebase-merged. The merged commit
+     on <release-remote>/<default-branch> has a different SHA
+     than your local tag, so the local tag still points at the
+     now-vanished pre-merge commit. Retag at the merged HEAD:
+
+       git fetch <release-remote>
+       git tag -d <tag>
+       git tag <tag> <release-remote>/<default-branch>
+       /mol:tag <tag> # re-run
+
+     If <tag> was *also* pushed to <release-remote> while still
+     pointing at the pre-merge SHA (orphan remote tag), delete
+     the remote tag first (destructive — confirm intent):
+
+       git push <release-remote> :refs/tags/<tag>
+
+  C. Override (you intentionally want an orphan tag — rare, e.g.
+     cherry-picked hotfix pointing outside the default branch):
+     re-run with explicit confirmation.
   ```
 
-  Honor an explicit override only after the user types it — do
-  not auto-proceed on the first refusal.
+  Honor an explicit override (case C) only after the user types
+  it — do not auto-proceed on the first refusal.
 
 ### 4. Refuse `origin` when `upstream` exists
 
