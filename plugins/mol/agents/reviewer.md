@@ -95,7 +95,7 @@ line:
 ```
 
 If the `janitor` agent emitted any **rule-capture suggestions** (patterns
-observed without a captured `.agent/` rule), surface them in their own
+observed without a captured `.claude/notes/` rule), surface them in their own
 section directly above the verdict so the user can paste them into
 `/mol:note`:
 

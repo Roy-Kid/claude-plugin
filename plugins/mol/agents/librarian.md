@@ -1,12 +1,12 @@
 ---
 name: librarian
-description: Spec-time placement & reuse consultant — given a planned new capability and its scope, reads the project blueprint at `.agent/architecture.md` and returns a structured report (Reuse candidates / Recommended placement / Closest pattern / Confidence) so `/mol:spec` Step 4.5 can fold the answer into the spec draft before any file lands. Read-only. Does not emit a `risks` section — architectural risk is `architect`'s domain at review/refactor time, not librarian's at planning time.
+description: Spec-time placement & reuse consultant — given a planned new capability and its scope, reads the project blueprint at `.claude/notes/architecture.md` and returns a structured report (Reuse candidates / Recommended placement / Closest pattern / Confidence) so `/mol:spec` Step 4.5 can fold the answer into the spec draft before any file lands. Read-only. Does not emit a `risks` section — architectural risk is `architect`'s domain at review/refactor time, not librarian's at planning time.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---
 
 Read CLAUDE.md, parse the `mol_project:` frontmatter, and read the
-project blueprint at `.agent/architecture.md` (or
+project blueprint at `.claude/notes/architecture.md` (or
 `{$META.notes_path sibling}/architecture.md`) before responding to
 any consult request.
 
@@ -45,7 +45,7 @@ The caller passes a structured prompt containing:
 
 ### 1. Read the blueprint
 
-Open `.agent/architecture.md`. If the path does not resolve, jump
+Open `.claude/notes/architecture.md`. If the path does not resolve, jump
 straight to "Stale signaling" — do not try to reconstruct the
 blueprint by walking the repo, that's `/mol:map`'s job, not yours.
 

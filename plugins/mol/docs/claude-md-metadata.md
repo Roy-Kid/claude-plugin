@@ -34,7 +34,7 @@ mol_project:
     style: google
   science:
     required: true
-  notes_path: .agent/notes.md
+  notes_path: .claude/notes/notes.md
   specs_path: .claude/specs/
 ---
 
@@ -96,7 +96,7 @@ Missing keys cause the skill to fall back to a project-type default
 | Key              | Type   | Notes                                                             |
 |------------------|--------|-------------------------------------------------------------------|
 | `style`          | enum   | `layered` / `crate-graph` / `backend-pillars` / `package-tree` / `monorepo` — picks the dependency-rule template the architect agent applies |
-| `rules_section`  | string | Exact heading in CLAUDE.md (or in a `.agent/architecture.md` page linked from CLAUDE.md) that holds the architecture rules. The architect agent reads everything under this heading |
+| `rules_section`  | string | Exact heading in CLAUDE.md (or in a `.claude/notes/architecture.md` page linked from CLAUDE.md) that holds the architecture rules. The architect agent reads everything under this heading |
 
 ### `doc` (required, object)
 
@@ -165,15 +165,15 @@ debt:
 
 Where `/mol:note` writes evolving decisions and where every agent
 reads recent notes from. This is **internal agent context** (zone
-`.agent/` per `design-principles.md` § 1) — never `docs/`.
+`.claude/notes/` per `design-principles.md` § 1) — never `docs/`.
 
 Resolution order (the skill does this; you only set it once):
 
 1. The value of `mol_project.notes_path` if present.
-2. `.agent/notes.md` if `.agent/` exists in the repo.
+2. `.claude/notes/notes.md` if `.claude/notes/` exists in the repo.
 3. Legacy fallback: `.claude/NOTES.md`.
 
-The harness-engineering preferred default is `.agent/notes.md`. Legacy
+The harness-engineering preferred default is `.claude/notes/notes.md`. Legacy
 projects that already keep their notes in `.claude/NOTES.md` may
 continue to do so by declaring it explicitly.
 
@@ -189,7 +189,7 @@ Resolution order:
 Specs are **active runtime artifacts** — `/mol:impl` ticks their
 Tasks checkboxes off as it works and **deletes** the file (and its
 INDEX entry) on completion. They live under `.claude/`, not under
-`.agent/` (passive context) or `docs/` (public documentation).
+`.claude/notes/` (passive context) or `docs/` (public documentation).
 
 ## Layering note
 
@@ -197,7 +197,7 @@ Following the four-zone layering in `design-principles.md` § 1, the
 two configurable paths land in different zones because they hold
 different *kinds* of content:
 
-- `notes_path` → `.agent/notes.md` (passive context — decisions,
+- `notes_path` → `.claude/notes/notes.md` (passive context — decisions,
   reasoning, captured invariants).
 - `specs_path` → `.claude/specs/` (active runtime artifacts — alive,
   ticked off as work progresses, deleted on completion).
@@ -206,14 +206,14 @@ The full zone breakdown:
 
 - `docs/` — public-facing documentation (no `mol_project` field;
   conventional).
-- `.agent/` — internal agent context (`notes_path`, contracts,
+- `.claude/notes/` — internal agent context (`notes_path`, contracts,
   handoffs, rubrics, decisions, debt).
 - `.claude/` — Claude Code runtime: skills, agents, hooks, settings,
   and **active** working artifacts like `specs/`.
 - `CLAUDE.md` — thin router that holds the `mol_project:`
   frontmatter and points to the other zones.
 
-The distinction between `.agent/` and `.claude/specs/` is the active /
+The distinction between `.claude/notes/` and `.claude/specs/` is the active /
 passive split: notes outlive any single feature; specs are intentionally
 ephemeral.
 

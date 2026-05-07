@@ -16,10 +16,6 @@ check       reads the harness; reports drift from the current version
 update      applies the upgrade — brings the harness to the current version
 ```
 
-`check` and `update` share a single "what's the diff between this
-harness and the current version's expected shape?" computation.
-`check` reports it; `update` applies the structural part of it.
-
 If the repo has no harness yet, this skill will say so and direct
 the user to `/mol-agent:bootstrap`. It does not initialize from
 scratch.
@@ -62,12 +58,22 @@ they came out of `/mol-agent:check`) but never act on them.
 
 | From (legacy)               | To (current)         | Why |
 |-----------------------------|----------------------|-----|
-| `.agent/specs/`             | `.claude/specs/`     | active vs passive split (current convention) |
-| `docs/decisions/`           | `.agent/decisions/`  | internal context, not public docs |
-| `docs/contracts/`           | `.agent/contracts/`  | internal context |
-| `docs/agent-rubrics*.md`    | `.agent/rubrics/`    | internal context |
-| `.claude/notes.md`          | `.agent/notes.md`    | passive memory belongs in `.agent/` |
-| `mol_project.perf:` block in CLAUDE.md frontmatter | (delete) | `perf.focus` was a single-value enum that didn't scale to multi-facet projects (mol v0.3.0). The `optimizer` agent now detects catalogs per file. |
+| `.agent/specs/`             | `.claude/specs/`     | active vs passive split (pre-v0.3.0 convention; specs are runtime artifacts) |
+| `docs/decisions/`           | `.claude/notes/decisions/`  | internal context, not public docs |
+| `docs/contracts/`           | `.claude/notes/contracts/`  | internal context |
+| `docs/agent-rubrics*.md`    | `.claude/notes/rubrics/`    | internal context |
+| `.claude/NOTES.md`          | `.claude/notes/notes.md`    | passive memory belongs in `.claude/notes/`, not at `.claude/` root |
+| `.agent/notes.md`           | `.claude/notes/notes.md`    | v0.3.0: passive context folder folds into `.claude/notes/` per Claude Code's spec (no native top-level `.agent/`); name avoids collision with `.claude/agents/` (Claude Code's agent definitions) |
+| `.agent/architecture.md`    | `.claude/notes/architecture.md` | v0.3.0 |
+| `.agent/decisions/`         | `.claude/notes/decisions/`  | v0.3.0 |
+| `.agent/rubrics/`           | `.claude/notes/rubrics/`    | v0.3.0 |
+| `.agent/contracts/`         | `.claude/notes/contracts/`  | v0.3.0 |
+| `.agent/debt/`              | `.claude/notes/debt/`       | v0.3.0 |
+| `.agent/handoffs/`          | `.claude/notes/handoffs/`   | v0.3.0 |
+| `.agent/open-questions.md`  | `.claude/notes/open-questions.md` | v0.3.0 |
+| `.agent/README.md`          | `.claude/notes/README.md`   | v0.3.0 |
+| `mol_project.notes_path: .agent/...` or `.claude/NOTES.md` | `mol_project.notes_path: .claude/notes/...` | v0.3.0: frontmatter follows the path move |
+| `mol_project.perf:` block in CLAUDE.md frontmatter | (delete) | `perf.focus` was a single-value enum that didn't scale to multi-facet projects. The `optimizer` agent now detects catalogs per file. |
 
 Add new rows as new conventions are codified — that is how the
 "current version's spec" evolves. A layout violation **not** in
@@ -81,7 +87,7 @@ invent moves.
 Confirm a harness is present:
 
 - `CLAUDE.md` exists at the target root
-- at least one of `.agent/`, `.claude/specs/` exists
+- at least one of `.claude/notes/`, `.claude/specs/` exists
 
 If not, report *"no harness found — run `/mol-agent:bootstrap`
 first"* and stop.
@@ -145,7 +151,7 @@ Upgrade plan (n items, target = current plugin version):
   - rebuild .claude/specs/INDEX.md (3 files unindexed)
 
 Manual TODO (m content-level items, surfaced from /mol-agent:check):
-  🔴 .agent/notes.md — agent contract content here belongs in `.claude/agents/` (rule O3)
+  🔴 .claude/notes/notes.md — agent contract content here belongs in `.claude/agents/` (rule O3)
   🟡 abc-feature.md — status: done but file still present (rule H; deletion is /mol:impl's job)
   ...
 ```

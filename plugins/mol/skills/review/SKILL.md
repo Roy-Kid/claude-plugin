@@ -63,7 +63,7 @@ Delegate in parallel to every agent in the working set. The full set
 9. **Security** — `security-reviewer` agent. Always delegated; the
    agent self-skips per file when no attack surface is present.
 10. **Hygiene / continuous tech-debt** — `janitor` agent. Always
-    runs. Reads `.agent/` for captured aesthetic rules and applies
+    runs. Reads `.claude/notes/` for captured aesthetic rules and applies
     them to the diff; emits hygiene findings plus suggestions for
     new rules to capture via `/mol:note`.
 

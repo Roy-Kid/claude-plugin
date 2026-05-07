@@ -91,16 +91,11 @@ each) and the configured `dev.command`. Then:
    the user the auto-start command did not produce a reachable
    URL — point them at the captured log file for triage.
 
-> **Remote dev server.** This skill is for evaluating against a
-> dev server it owns end-to-end. If you need to evaluate against
-> a long-running dev server you started outside of `mol` (a
-> remote box, a `tmux` session, a sidecar container), this skill
-> is the wrong tool — drive the browser MCP directly, or open a
-> spec-level "Dev environment" note for a future
-> `mol_project.dev.remote_url` mode. We deliberately do not
-> short-circuit to a user-provided URL here, because the
-> probe-then-fallback flow silently masked "is this even *my*
-> server?" bugs.
+> **Remote dev server.** This skill is for dev servers it owns
+> end-to-end. For a long-running dev server started outside `mol`
+> (remote box, `tmux` session, sidecar container), use the browser
+> MCP directly, or add a `mol_project.dev.remote_url` mode in a
+> future iteration.
 
 ## Project configuration
 
@@ -128,12 +123,10 @@ mol_project:
     ready_timeout: 90
 ```
 
-Why per-project: dev-server stacks, workspace layouts (single-
-package vs monorepo subdirectory), banner strings, and the choice
-of mock vs live backend all vary across projects. The skill
-states the procedural intent ("start the dev server, parse its
-banner, navigate to it, evaluate, clean up"); each project spells
-out its own HOW.
+Per-project because dev-server stacks, workspace layouts, banner
+strings, and mock-vs-live backends all vary; the skill states the
+intent (start, parse banner, navigate, evaluate, clean up) and
+each project spells out its own HOW.
 
 ### 4. Delegate per criterion
 
@@ -210,16 +203,9 @@ to worry about.
 
 ## Why this lives in `mol`
 
-The runtime evaluator was originally drafted as a separate
-`mol-web` plugin, but a separate plugin only makes sense when a
-plugin owns a non-trivial dependency. `mol:web` does not bundle
-Playwright — it consumes whatever browser-automation MCP the user
-has installed — so its only "asset" is the SKILL.md procedure and
-the `playwright-evaluator` agent. That fits cleanly inside `mol`
-as a sibling to `/mol:review`, behind a self-detect gate.
-
-The same shape can host other runtime evaluators when a project
-needs them: `/mol:bench` for `performance`, `/mol:numeric` for
-`scientific`, etc. Each follows the contract in
-`plugins/mol/docs/evaluator-protocol.md` and self-skips when its
-prerequisites are not present.
+`mol:web` doesn't bundle Playwright (it consumes whatever
+browser-automation MCP the user installed), so its only asset is
+this procedure plus the `playwright-evaluator` agent — fits
+inside `mol` as a sibling to `/mol:review`, behind a self-detect
+gate. Other runtime evaluators (`/mol:bench`, `/mol:numeric`, …)
+follow the same shape via `plugins/mol/docs/evaluator-protocol.md`.

@@ -1,5 +1,5 @@
 ---
-description: Build or refresh the project blueprint at `.agent/architecture.md` — a passive map of modules, public surfaces, style conventions, and layer roles. Delegates the actual inventory work to the `architect` agent (inventory mode); diffs the proposal against the existing blueprint; surfaces the diff to the user; writes only after explicit user approval. Idempotent — a re-run with no drift reports "blueprint already current" and exits without writing. Pairs with `librarian` (which consumes this blueprint) and `/mol:spec` (which consults `librarian` at planning time).
+description: Build or refresh the project blueprint at `.claude/notes/architecture.md` — a passive map of modules, public surfaces, style conventions, and layer roles. Delegates the actual inventory work to the `architect` agent (inventory mode); diffs the proposal against the existing blueprint; surfaces the diff to the user; writes only after explicit user approval. Idempotent — a re-run with no drift reports "blueprint already current" and exits without writing. Pairs with `librarian` (which consumes this blueprint) and `/mol:spec` (which consults `librarian` at planning time).
 argument-hint: "[scope path, optional]"
 ---
 
@@ -8,33 +8,27 @@ argument-hint: "[scope path, optional]"
 Read CLAUDE.md. Parse `mol_project:` (`$META`). If missing, emit the
 adoption hint and stop.
 
-Resolve the blueprint path:
+Resolve the blueprint path: always `<root>/.claude/notes/architecture.md`.
+Do **not** derive it from `$META.notes_path` — passive internal
+context belongs under `.claude/notes/` per
+`plugins/mol/docs/design-principles.md` L1, regardless of where
+`notes_path` happens to point. A project whose `notes_path` is
+configured outside `.claude/notes/` is itself an L1 violation and
+`/mol-agent:check` will flag it; this skill must not propagate that
+violation by colocating the blueprint with notes.
 
-1. If `$META.notes_path` is set, derive the blueprint path as the
-   sibling `architecture.md` next to it (canonical default
-   `.agent/architecture.md`).
-2. Otherwise, default to `.agent/architecture.md`.
-
-Create the parent directory if missing. The blueprint lives under
-`.agent/` because it is **passive internal context** (per
-`plugins/mol/docs/design-principles.md` L1) — it outlives any single
+Create `.claude/notes/` if missing. The blueprint lives there
+because it is **passive internal context** — it outlives any single
 feature and exists to inform planning, not to drive runtime behavior.
 
 ## Why this skill exists
 
-`/mol:spec` runs into a visibility ceiling once a project has more
-than a handful of modules: spec drafting can't see what's already
-implemented, what conventions already hold, or where a new module
-should land. The fix is a persisted project blueprint that
-`librarian` consumes during `/mol:spec` Step 4.5 to answer "where
-does this go? is this already there?" before the spec is drafted.
-
-This skill **builds and refreshes** that blueprint. It does not
-consume it (that's `librarian`'s job) and it does not enforce
-compliance against it (that's `architect`'s review-mode job — see
-the O1 boundary in `design-principles.md`). The single
-responsibility here is: produce a fresh, accurate map and persist
-it under user approval.
+`/mol:spec` Step 4.5 consults `librarian`, which reads the
+blueprint this skill maintains. This skill **builds and refreshes**
+the blueprint — it does not consume it (`librarian`'s job) and it
+does not enforce compliance against it (`architect`'s review-mode
+job; see the O1 boundary in `design-principles.md`). The single
+responsibility: a fresh, accurate map persisted under user approval.
 
 ## Procedure
 
@@ -103,7 +97,7 @@ treated as machine-managed and may be replaced.
 
 ### 4. Diff against the existing blueprint
 
-If `.agent/architecture.md` already exists, read it and compute a
+If `.claude/notes/architecture.md` already exists, read it and compute a
 human-readable diff between the existing managed section and the
 proposed managed section:
 
@@ -130,13 +124,10 @@ safe.
 Show the diff (or, on first run, the full proposed inventory) to
 the user. **Wait for approval.** Do not write past this gate.
 
-The gate exists because the blueprint shapes future planning
-decisions: a wrong entry here propagates into every `/mol:spec`
-that consults `librarian`. The user must understand what's being
-recorded — including the implicit risks of any mis-classification
-— and confirm before it lands on disk. This mirrors the same
-"surface findings, get explicit approval" pattern `/mol:spec` Step
-6 enforces for librarian's reuse candidates.
+A wrong blueprint entry propagates into every `/mol:spec` that
+consults `librarian`, so the user must confirm what's being
+recorded before it lands on disk — same pattern as `/mol:spec`
+Step 6's reuse-candidate approval gate.
 
 Acceptable user responses:
 
@@ -150,7 +141,7 @@ Acceptable user responses:
 ### 6. Write the blueprint
 
 After explicit approval, write the managed section into
-`.agent/architecture.md`:
+`.claude/notes/architecture.md`:
 
 - if the file does not exist, create it with the shell shown in
   Step 3.
@@ -171,7 +162,7 @@ Print:
 End with a one-line user-facing summary (F2):
 
 ```
-/mol:map: blueprint refreshed at .agent/architecture.md (3 added, 1 removed)
+/mol:map: blueprint refreshed at .claude/notes/architecture.md (3 added, 1 removed)
 ```
 
 For the no-op branch:
@@ -183,7 +174,7 @@ For the no-op branch:
 ## Guardrails
 
 - **Read-only on production code.** This skill writes only the
-  blueprint file under `.agent/`. It never edits source, specs,
+  blueprint file under `.claude/notes/`. It never edits source, specs,
   or CLAUDE.md.
 - **No write past the gate.** Step 5's user approval is mandatory;
   there is no `--yes` shortcut. The blueprint shapes future
@@ -198,7 +189,7 @@ For the no-op branch:
   `<!-- mol:map:managed begin -->` / `<!-- mol:map:managed end -->`
   so re-runs update in place rather than appending.
 - **Do not promote to CLAUDE.md.** The blueprint lives under
-  `.agent/` permanently; CLAUDE.md is a thin router (L3) and may
+  `.claude/notes/` permanently; CLAUDE.md is a thin router (L3) and may
   link to the blueprint but must not embed it.
 
 ## Bilingual

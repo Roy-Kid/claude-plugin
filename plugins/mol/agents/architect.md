@@ -88,7 +88,7 @@ templates but produce different output:
   violations.
 - **Inventory mode** → a structured catalog of what currently
   exists, intended for `/mol:map` to persist into
-  `.agent/architecture.md` (the project blueprint that
+  `.claude/notes/architecture.md` (the project blueprint that
   `librarian` consumes at `/mol:spec` Step 4.5).
 
 Inventory mode is **read-only and does not write to disk**. You

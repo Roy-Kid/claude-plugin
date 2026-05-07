@@ -85,9 +85,9 @@ class ProjectBlueprintMechanismTests(unittest.TestCase):
             "ac-001: /mol:map SKILL.md frontmatter must declare a `description` field.",
         )
         self.assertIn(
-            ".agent/architecture.md",
+            ".claude/notes/architecture.md",
             fm.get("description", ""),
-            "ac-001: /mol:map description must announce it writes .agent/architecture.md.",
+            "ac-001: /mol:map description must announce it writes .claude/notes/architecture.md.",
         )
         self.assertIn(
             "argument-hint",
@@ -218,9 +218,9 @@ class ProjectBlueprintMechanismTests(unittest.TestCase):
             "ac-004: librarian tools must not include Edit.",
         )
         self.assertIn(
-            ".agent/architecture.md",
+            ".claude/notes/architecture.md",
             body,
-            "ac-004: librarian body must reference reading .agent/architecture.md first.",
+            "ac-004: librarian body must reference reading .claude/notes/architecture.md first.",
         )
 
     # -- ac-005 --------------------------------------------------------------

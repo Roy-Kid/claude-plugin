@@ -16,32 +16,23 @@ Resolve the specs path:
 
 Create the directory if missing.
 
-## Specs are active runtime artifacts
+## What this skill produces
 
-Specs live under `.claude/` because they are **alive**: `/mol:impl`
-ticks their checkboxes off as work progresses, and the spec file is
-**deleted** when every task is complete. A spec is not documentation
-— it is a working contract between this conversation and the next
-one.
-
-This skill produces **two** files per spec:
+Two files per spec, written together:
 
 - `<slug>.md` — the design (Summary / Design / Files / Tasks /
   Testing / Out of scope).
-- `<slug>.acceptance.md` — the binding "done" contract: structured
-  observable criteria that `/mol:impl` and any runtime evaluator
-  (e.g. `/mol:web` for UI) verify against. Format defined in
-  `plugins/mol/docs/evaluator-protocol.md`.
+- `<slug>.acceptance.md` — the binding "done" contract per
+  `plugins/mol/docs/evaluator-protocol.md`; `/mol:impl` and any
+  runtime evaluator (e.g. `/mol:web`) verify against it.
 
-The pair is produced together. `/mol:impl` refuses to start without
-both files in place — this is the planner→generator handoff
-formalized.
+`/mol:impl` refuses to start without both files in place. The pair
+is alive — `/mol:impl` ticks the Tasks checkboxes off as work
+progresses and **deletes** both files when every task is complete.
 
-Where specs do **not** belong:
-
-- `docs/` — public documentation. Never put a spec there.
-- `.agent/` — passive context (notes, decisions, debt). Specs are
-  not passive; they are active runtime tasks.
+Where specs do **not** belong: `docs/` (public documentation —
+never), `.claude/notes/` (passive notes and decisions — specs are active
+runtime tasks).
 
 ## Procedure
 
@@ -92,7 +83,7 @@ structured input for `spec-writer`.
 
 Before handing the request to `spec-writer`, ask the `librarian`
 agent to look at what's already in the codebase (via the project
-blueprint at `.agent/architecture.md`) and answer two questions:
+blueprint at `.claude/notes/architecture.md`) and answer two questions:
 *"is this already there?"* and *"where does it canonically belong?"*
 
 Invoke `librarian` with a structured prompt:
@@ -117,7 +108,7 @@ chain is:
 1. this skill invokes `architect` in `mode: inventory` (the
    architect inventory mode) to draft a fresh catalog;
 2. this skill invokes `/mol:map` (which gates on the user-confirm
-   step) to write the refreshed `.agent/architecture.md`;
+   step) to write the refreshed `.claude/notes/architecture.md`;
 3. this skill re-consults `librarian` (the librarian re-consult)
    and now expects Shape A.
 
@@ -245,19 +236,12 @@ End with a one-line user-facing summary.
 
 ## Why drafting is delegated
 
-The bulk of `/mol:spec`'s work — drafting prose, listing files,
-breaking the work into atomic tasks, walking the self-validation
-checklist, proposing acceptance criteria — is one long generative
-pass. Doing that in the parent context burns tokens that the
-ensuing `/mol:impl` run (and the rest of the conversation) needs.
-The `spec-writer` subagent runs in its own context window and
-returns only the finished markdown. The parent retains the
-result, not the drafting trail.
-
-The user-interaction parts (conflict triage, approval gate,
-persistence, INDEX update) stay in the parent because they
-require dialogue with the user and atomic file-system writes —
-neither fits a one-shot subagent.
+Drafting (prose, file list, atomic tasks, self-validation,
+acceptance criteria) is one long generative pass; running it in
+`spec-writer`'s subagent context keeps the parent free for the
+ensuing conversation. User-interaction parts (triage, approval,
+persistence, INDEX) stay here — they need dialogue and atomic
+writes.
 
 See `plugins/mol/docs/agent-design.md` for the full producer /
 reviewer / drafter classification.

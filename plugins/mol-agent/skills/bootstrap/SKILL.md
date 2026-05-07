@@ -1,50 +1,51 @@
 ---
-description: Repository-specific agent-harness initializer. Inspects the repo, discovers local conventions, and installs only the minimum guardrails needed for future agents to work safely. Idempotent — safe to re-run. Writes CLAUDE.md and the agent-harness scaffolding (.agent/ and/or .claude/) only; never writes project source.
+description: Repository-specific agent-harness initializer. Inspects the repo, discovers local conventions, and installs only the minimum guardrails needed for future agents to work safely. Idempotent — safe to re-run. Writes CLAUDE.md and the agent-harness scaffolding (.claude/notes/ and/or .claude/) only; never writes project source.
 argument-hint: "[one-sentence purpose, optional]"
 ---
 
 # /mol-agent:bootstrap — Agent Harness Bootstrap
 
-Use this skill to **initialize or improve** the agent-facing setup of a
-repository.
+Initialize or improve a repository's agent-facing setup. Separate the
+four kinds of content (public docs / internal agent context / runtime
+/ router) and install only the minimum guardrails this repo actually
+needs — not a fixed template.
 
-The goal is not to impose a rigid template. The goal is to make the
-repository easier for future agents to understand, modify, evaluate, and
-continue working on — by separating the four kinds of content
-(public docs / internal agent context / runtime / router) and installing
-only the minimum guardrails this particular repo actually needs.
-
-> `/mol-agent:bootstrap` is **not a template copier**. It is a repository-
-> specific agent-harness initializer that discovers local conventions
-> and installs only the minimum guardrails needed for future agents to
-> work safely.
-
-This skill does not require an existing `mol_project:` frontmatter — it
-is the tool that creates CLAUDE.md and (optionally) populates that
-frontmatter. It works on any repository, mol-family or otherwise.
+This skill does not require an existing `mol_project:` frontmatter; it
+is the tool that creates CLAUDE.md and optionally populates that
+frontmatter, on any repository.
 
 ---
 
 ## Core principle — four-zone separation, active vs passive
 
 ```
-docs/         public-facing documentation (tutorials, API, user guides)
-.agent/       passive internal context (notes, contracts, handoffs,
-              rubrics, decisions, open questions, debt) — outlives
-              any single feature
-.claude/      Claude Code runtime + active artifacts: skills, agents,
-              hooks, settings, AND specs/ (alive, ticked off as
-              /mol:impl works, deleted on completion)
-CLAUDE.md     thin entry router — points to where things live; does
-              not embed all the rules
+docs/                    public-facing documentation
+.claude/                 (canonical Claude Code project folder)
+  notes/                 passive internal context — project notes,
+                         architecture.md, decisions, contracts, handoffs,
+                         rubrics, debt, open questions. Outlives features.
+  specs/                 active runtime artifacts — alive, ticked off as
+                         /mol:impl works, deleted on completion.
+  agents/, skills/,      Claude Code's own runtime configuration —
+  hooks/, settings.json  loaded by Claude Code itself.
+CLAUDE.md                thin entry router — points to where things
+                         live; does not embed all the rules.
 ```
 
-The split between `.agent/` and `.claude/` is **active vs passive**.
-Notes are kept; specs are intentionally ephemeral.
+`.claude/` is Claude Code's canonical project folder; everything the
+agent harness reads lives under it. Inside, content splits **active
+vs passive**: `.claude/notes/` is passive (project notes are kept),
+`.claude/specs/` is active (specs are intentionally ephemeral).
+
+`.claude/notes/` (passive project knowledge) is *not* the same folder
+as `.claude/agents/` (Claude Code's agent definitions). Notes = what
+the agent reads; agents = what the agent *is*.
 
 Do not pollute public documentation with internal agent workflow
-artifacts. Do not put specs in `docs/` or `.agent/` — they live in
-`.claude/specs/`. Keep CLAUDE.md short.
+artifacts. Do not put specs in `docs/` or `.claude/notes/` — they
+live in `.claude/specs/`. Do not put long-lived knowledge in
+`.claude/specs/` — it goes in `.claude/notes/`. Keep CLAUDE.md
+short.
 
 If the repo already has a working equivalent for any of these zones,
 **respect that**. Adapt to the repo before reshaping it.
@@ -59,7 +60,7 @@ Discover, in parallel where possible:
 
 - working directory, git status, primary language(s)
   (`git ls-files | awk -F. '{print $NF}' | sort | uniq -c | sort -rn | head`)
-- whether each of `docs/`, `.agent/`, `.claude/`, `CLAUDE.md` already
+- whether each of `docs/`, `.claude/notes/`, `.claude/`, `CLAUDE.md` already
   exists — and if so, what they contain
 - existing build / test / format commands (look for `pyproject.toml`,
   `Cargo.toml`, `package.json`, `CMakeLists.txt`, `go.mod`, `Makefile`,
@@ -94,12 +95,12 @@ Pick the *smallest* set of changes that gives this repo a useful
 harness. Do not impose a fixed structure. Reasonable defaults:
 
 - a thin `CLAUDE.md` (router) — always
-- `.agent/README.md` — explains what this directory is for
-- `.agent/notes.md` — passive memory, captured by `/mol:note`
+- `.claude/notes/README.md` — explains what this directory is for
+- `.claude/notes/notes.md` — passive memory, captured by `/mol:note`
 - `.claude/specs/` (empty directory) — the destination `/mol:spec`
   will write into. No need to populate it; it just needs to exist
   so the convention is visible
-- a project blueprint stub at `.agent/architecture.md` (one line:
+- a project blueprint stub at `.claude/notes/architecture.md` (one line:
   `> 跑 /mol:map 填充本蓝图` / *"run /mol:map to populate this
   blueprint"*) — the canonical home for the structured catalog
   that `librarian` consumes during `/mol:spec` Step 4.5; do NOT
@@ -107,14 +108,14 @@ harness. Do not impose a fixed structure. Reasonable defaults:
 
 Add more **only when justified by the repo**:
 
-- `.agent/contracts/` if there are real agent handoff contracts to
+- `.claude/notes/contracts/` if there are real agent handoff contracts to
   record
-- `.agent/rubrics/` if there are real review checklists to encode
-- `.agent/decisions/` if the project has substantial architectural
+- `.claude/notes/rubrics/` if there are real review checklists to encode
+- `.claude/notes/decisions/` if the project has substantial architectural
   history worth preserving
-- `.agent/debt/` if there is real technical debt the user wants
+- `.claude/notes/debt/` if there is real technical debt the user wants
   tracked
-- `.agent/handoffs/` if work is regularly paused mid-flight
+- `.claude/notes/handoffs/` if work is regularly paused mid-flight
 - `.claude/skills/` and `.claude/agents/` only if the project will
   benefit from running custom skills/agents — for many small repos a
   thin CLAUDE.md plus the installed plugins are enough
@@ -163,7 +164,7 @@ Before reporting, verify the result satisfies the layering rules:
 
 - `docs/` (if it exists) contains only public-user content (no
   specs, no agent contracts, no rubrics)
-- `.agent/` (if you created or modified it) contains only passive
+- `.claude/notes/` (if you created or modified it) contains only passive
   internal context, no public-user prose, no specs
 - `.claude/` contains only behavior (skills/agents/hooks/settings)
   and active artifacts (`specs/`) — no long-lived knowledge
@@ -181,7 +182,7 @@ Concise summary:
 - what you inspected
 - what you added or changed (with paths)
 - what you intentionally left untouched (and why)
-- any open questions you recorded in `.agent/open-questions.md`
+- any open questions you recorded in `.claude/notes/open-questions.md`
 - the suggested next improvement
 
 End with a one-line summary in the standard form (F2).
@@ -199,7 +200,7 @@ one of these, stop and reconsider.
   file you add must be justified by something you *observed* in the
   repository.
 - **Do not** put agent contracts, handoffs, rubrics, temporary plans,
-  or private reasoning into `docs/`. Those belong in `.agent/`.
+  or private reasoning into `docs/`. Those belong in `.claude/notes/`.
 - **Do not** turn `CLAUDE.md` into a long manual. It is a router.
 - **Do not** duplicate information that already exists elsewhere in
   the repository.
@@ -251,16 +252,20 @@ or stack>
 ## Where things live
 
 - Source code: `<path>`
-- Public documentation: `docs/`
-- Passive internal context (notes, decisions, debt): `.agent/`
-- Claude Code runtime + active specs: `.claude/` (`.claude/specs/`
-  holds in-flight work; specs are deleted on completion)
 - Tests: `<path>`
+- Public documentation: `docs/`
+- Passive project knowledge (notes, decisions, debt, blueprint):
+  `.claude/notes/`
+- Active runtime specs (alive, deleted on completion):
+  `.claude/specs/`
+- Claude Code runtime config (agents, skills, hooks, settings):
+  `.claude/agents/`, `.claude/skills/`, `.claude/hooks/`,
+  `.claude/settings.json`
 
 ## Default workflow
 
 For non-trivial work, prefer:
-1. plan (`/mol:spec` or write to `.agent/`)
+1. plan (`/mol:spec` or write to `.claude/notes/`)
 2. implement (`/mol:impl` or `/mol:fix`)
 3. review (`/mol:review`)
 4. capture decisions (`/mol:note`)
@@ -274,7 +279,7 @@ require a deliberate decision to break>
 
 <!-- Free-form additions below this line are preserved across re-runs.
      If you add a section that becomes a stable rule, leave it here.
-     If it grows past a screen, promote it to .agent/<topic>.md and
+     If it grows past a screen, promote it to .claude/notes/<topic>.md and
      link from above. -->
 ```
 
@@ -285,10 +290,10 @@ references in the body to the project's chosen `notes_path` and
 
 ---
 
-## .agent/ starter template (only if creating fresh)
+## .claude/notes/ starter template (only if creating fresh)
 
 ```
-.agent/
+.claude/notes/
   README.md             # what this directory is for, how to navigate
   notes.md              # evolving decisions, captured by /mol:note
   architecture.md       # project blueprint — structured catalog of
@@ -302,8 +307,8 @@ references in the body to the project's chosen `notes_path` and
                           bootstrap; the user fills these in over time
 ```
 
-Add `.agent/contracts/`, `.agent/rubrics/`, `.agent/decisions/`,
-`.agent/debt/`, `.agent/handoffs/` **only when** the repo has real
+Add `.claude/notes/contracts/`, `.claude/notes/rubrics/`, `.claude/notes/decisions/`,
+`.claude/notes/debt/`, `.claude/notes/handoffs/` **only when** the repo has real
 content for them. Empty directories are not value.
 
 ## .claude/ starter (only if creating fresh)

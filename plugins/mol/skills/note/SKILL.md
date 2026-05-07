@@ -10,11 +10,11 @@ Read CLAUDE.md and parse `mol_project:` (`$META`).
 Resolve the notes path:
 
 1. If `$META.notes_path` is set, use it (canonical default
-   `.agent/notes.md`).
-2. Otherwise, default to `.agent/notes.md`.
+   `.claude/notes/notes.md`).
+2. Otherwise, default to `.claude/notes/notes.md`.
 
 Create the notes file (and any parent directory) if missing. Notes
-are **passive internal context** — they live under `.agent/`, never
+are **passive internal context** — they live under `.claude/notes/`, never
 under `docs/` (public) and never under `.claude/specs/` (active
 runtime artifacts; see `/mol:spec`). The active/passive distinction
 matters: notes outlive any single feature, specs do not.
@@ -55,7 +55,7 @@ Report any cleanup performed.
 
 - Stable, proven, already verified in code → write directly to
   CLAUDE.md in the appropriate section. Keep CLAUDE.md as a thin
-  router (L3): if the rule is large, write a `.agent/<topic>.md`
+  router (L3): if the rule is large, write a `.claude/notes/<topic>.md`
   page and link from CLAUDE.md instead of inlining.
 - New or still-evolving → write to the notes file.
 - Already covered → tell the user, do nothing.
@@ -82,7 +82,7 @@ After writing, scan all existing notes entries. Promote any that are:
 - Unchanged in recent conversation history.
 
 Promoting = copying the rule to the appropriate CLAUDE.md section (or
-to a `.agent/<topic>.md` page if the rule is large enough that
+to a `.claude/notes/<topic>.md` page if the rule is large enough that
 inlining would bloat CLAUDE.md past its router budget), then deleting
 from the notes file.
 

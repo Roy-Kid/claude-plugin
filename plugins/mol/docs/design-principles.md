@@ -38,54 +38,80 @@ poisons future agents because they cannot tell what they are reading.
 │   docs/      │  user guides, onboarding. Written for human readers
 │              │  who do not work on the agent harness.
 └──────────────┘
-┌──────────────┐  internal agent context (passive): notes, decisions,
-│  .agent/     │  contracts, handoffs, rubrics, debt, open questions,
-│              │  project map. Outlives any single feature.
-└──────────────┘
-┌──────────────┐  Claude Code runtime + active artifacts: skills,
-│  .claude/    │  agents, hooks, settings, AND specs/ (alive, ticked
-│              │  off as /mol:impl progresses, deleted on completion).
-└──────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│  .claude/  (everything Claude Code & mol read at the project level)  │
+│                                                                      │
+│   .claude/notes/    passive internal context (mol): notes,           │
+│                     architecture.md, decisions, contracts, handoffs, │
+│                     rubrics, debt, open questions. Outlives features.│
+│                                                                      │
+│   .claude/specs/    active runtime artifacts (mol): alive, ticked    │
+│                     off as /mol:impl progresses, deleted on done.    │
+│                                                                      │
+│   .claude/agents/   Claude Code: agent definitions (loaded at run)   │
+│   .claude/skills/   Claude Code: skill definitions                   │
+│   .claude/hooks/    Claude Code: hooks                               │
+│   .claude/settings.json   Claude Code: settings                      │
+└──────────────────────────────────────────────────────────────────────┘
 ┌──────────────┐  thin entry router: what is this repo, where do things
 │  CLAUDE.md   │  live, what must never be changed casually. Routes;
 │              │  never embeds.
 └──────────────┘
 ```
 
-The split between `.agent/` and `.claude/` is **active vs passive**:
-notes outlive any single feature and stay; specs are intentionally
-ephemeral and disappear when their work is done.
+`.claude/` follows Claude Code's project-level convention: everything
+Claude Code or the mol harness reads lives under it. Inside, content
+splits **active vs passive**:
+
+- `.claude/notes/` — passive: outlives features, never auto-deleted.
+  Note this is *not* `.claude/agents/` — that is Claude Code's folder
+  for agent *definitions* (one file per agent, each defining a role).
+  `.claude/notes/` is the agent's *project knowledge* (what the agent
+  reads to understand this repo).
+- `.claude/specs/` — active: intentionally ephemeral, deleted on done.
+- `.claude/agents/`, `.claude/skills/`, `.claude/hooks/`,
+  `.claude/settings.json` — Claude Code's own runtime configuration.
+
+The four zones are still four because the conceptual split (public /
+passive-internal / active-runtime / router) is what matters; nesting
+the latter two under `.claude/` is just the spec-compliant filesystem
+layout.
 
 ### Layering rules (L)
 
 - **L1.** Public user docs live under `docs/`. Passive internal
   context (notes, decisions, contracts, handoffs, rubrics, debt log,
-  open questions) lives under `.agent/`. Runtime configuration AND
-  active runtime artifacts (skills, agents, hooks, settings, and
-  specs/) live under `.claude/`. Each zone reads, writes, and
-  references its own kind only.
+  open questions, project blueprint) lives under `.claude/notes/`.
+  Active runtime artifacts (specs) live under `.claude/specs/`.
+  Claude Code's own configuration (agents, skills, hooks, settings)
+  lives directly under `.claude/`. `CLAUDE.md` is the router. Each
+  category reads, writes, and references only its own kind.
 
 - **L2.** Do not pollute `docs/` with agent contracts, handoffs,
   rubrics, specs, working memory, temporary plans, or private
-  reasoning. Do not put public-user prose in `.agent/` or
-  `.claude/`. Do not put long-lived knowledge in `.claude/` — that
-  zone is for *behavior* and *active artifacts*, not for archival
-  state.
+  reasoning. Do not put public-user prose under `.claude/`. Do not
+  put long-lived knowledge in `.claude/specs/` or directly under
+  `.claude/` outside `.claude/notes/` — passive context goes in
+  `.claude/notes/`, active runtime goes in `.claude/specs/`,
+  Claude Code config goes in its conventional subfolders. Mixing
+  passive content into `.claude/specs/` (or vice versa) breaks
+  the active/passive contract that `/mol:impl`'s deletion behavior
+  depends on.
 
 - **L3.** `CLAUDE.md` is a short router (≤ ~150 lines is a good
   budget). It answers: *what is this repo?*, *where do things live?*,
   *what must never change casually?*, *what is the default workflow?*
   It links to files; it does not embed them. A CLAUDE.md that grows
-  past two screens is a smell — promote sections to `.agent/` and
-  link.
+  past two screens is a smell — promote sections to `.claude/notes/`
+  and link.
 
 - **L4.** Specs are alive. `/mol:spec` writes them under
   `.claude/specs/` with a checkbox-tracked Tasks section. `/mol:impl`
   ticks each box as work completes and deletes the spec file (plus
   its INDEX entry) on completion. A spec is never archived to
-  `docs/` or `.agent/`; once `done`, it is removed because the
-  information that mattered is now in code, tests, and (when
-  non-obvious) `.agent/notes.md`.
+  `docs/` or `.claude/notes/`; once `done`, it is removed because
+  the information that mattered is now in code, tests, and (when
+  non-obvious) `.claude/notes/notes.md`.
 
 ## 2. Two-Layer Model
 
@@ -129,7 +155,7 @@ choreography that belongs in a skill.
 ## 4. Knowledge Hierarchy
 
 ```
-.agent/notes.md   evolving decisions, captured by /mol:note
+.claude/notes/notes.md   evolving decisions, captured by /mol:note
         │
         ▼ promotion when stable
    CLAUDE.md  ◀──────── thin router — read by every agent
@@ -163,7 +189,7 @@ See Section 1.
   unique axis.
 
   *Worked example — `architect` vs `librarian` boundary.* Both
-  agents read the same shared artifact (`.agent/architecture.md`,
+  agents read the same shared artifact (`.claude/notes/architecture.md`,
   the project blueprint maintained by `/mol:map`), but they answer
   different questions and are wired into different scheduling
   points:
@@ -225,7 +251,7 @@ See Section 1.
 - **W4.** Architecture validation happens at four points: scope
   assessment (planning), **spec-time librarian consult**
   (`/mol:spec` Step 4.5 — placement and reuse advice against the
-  project blueprint at `.agent/architecture.md`), after
+  project blueprint at `.claude/notes/architecture.md`), after
   implementation, and after refactor. The spec-time consult is the
   fourth scheduling point and was added to plug the planning-phase
   visibility gap that produced duplicate modules and wrong-layer
@@ -267,13 +293,13 @@ tree. Output one finding per row: `<emoji> file:line — message` (🚨 /
 - [ ] Are public docs under `docs/`? Is `docs/` free of agent
       contracts, handoffs, working memory, rubrics, or specs? (L1, L2)
 - [ ] Are passive internal artifacts (notes, decisions, debt log,
-      handoffs, rubrics, contracts) under `.agent/`? (L1)
+      handoffs, rubrics, contracts) under `.claude/notes/`? (L1)
 - [ ] Are specs under `.claude/specs/` with a checkbox-tracked Tasks
       section? Are completed specs deleted (not archived)? (L4)
 - [ ] Is `.claude/` free of long-lived knowledge? (only skills,
       agents, hooks, settings, and active specs) (L2)
 - [ ] Is CLAUDE.md a thin router, not a manual? Does it route to
-      `docs/`, `.agent/`, and `.claude/` rather than embedding their
+      `docs/`, `.claude/notes/`, and `.claude/` rather than embedding their
       content? (L3)
 
 ### Layer presence
@@ -351,8 +377,8 @@ discipline. The audit flags each as 🟡 or higher.
 - **Knowledge in `.claude/`.** Architecture rules, decisions, or
   domain notes embedded in a skill/agent body, or written into
   `.claude/` outside of `.claude/specs/`. Cure: promote to CLAUDE.md
-  or `.agent/` and leave a reference.
-- **Specs in `.agent/` or `docs/`.** Specs are alive — they belong in
+  or `.claude/notes/` and leave a reference.
+- **Specs in `.claude/notes/` or `docs/`.** Specs are alive — they belong in
   `.claude/specs/`. Putting them next to passive notes is a category
   error. Cure: move under `.claude/specs/` and add a Tasks checklist.
 - **Specs without checkboxes.** A spec with no Tasks section can't be
@@ -363,13 +389,13 @@ discipline. The audit flags each as 🟡 or higher.
   didn't, delete manually and capture any non-obvious context with
   `/mol:note`.
 - **Contracts in `docs/`.** Agent handoff contracts or review rubrics
-  living next to user tutorials. Cure: move under `.agent/`.
+  living next to user tutorials. Cure: move under `.claude/notes/`.
 - **CLAUDE.md as manual.** A 600-line CLAUDE.md that nobody reads.
-  Cure: split into `.agent/architecture.md`, `.agent/conventions.md`,
+  Cure: split into `.claude/notes/architecture.md`, `.claude/notes/conventions.md`,
   etc. and link.
 - **Fake precision.** A bootstrap that invented architecture rules
   with no evidence in the codebase. Cure: record as an open question
-  in `.agent/open-questions.md` instead.
+  in `.claude/notes/open-questions.md` instead.
 - **Agent calling agent.** Implicit routing through agent bodies.
   Cure: hoist orchestration into a skill.
 - **One-shot skills with no idempotency.** Re-running them duplicates

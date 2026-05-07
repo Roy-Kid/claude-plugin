@@ -7,7 +7,7 @@ just enough scaffolding to make safe defaults the obvious move — so
 the *next* agent that walks in succeeds without re-deriving the rules.
 
 `mol` is the day-to-day toolbox: spec, implement, review, fix,
-refactor, simplify, ship. The harness *itself* (CLAUDE.md, `.agent/`,
+refactor, simplify, ship. The harness *itself* (CLAUDE.md, `.claude/notes/`,
 `.claude/specs/`) is installed and maintained by the sibling plugin
 [`mol-agent`](../mol-agent/README.md).
 
@@ -30,17 +30,24 @@ For local development:
 ## Four-zone layering (active vs passive)
 
 Every well-shaped repository the `mol` plugin works on separates four
-kinds of content:
+kinds of content. Top-level layout follows Claude Code's project
+convention (`.claude/` is the canonical project folder); the
+active/passive split lives inside `.claude/`.
 
-| Zone        | Purpose                                                         |
-|-------------|-----------------------------------------------------------------|
-| `docs/`     | public-facing documentation (tutorials, API, user guides)       |
-| `.agent/`   | passive internal context (notes, decisions, contracts, handoffs, rubrics, debt, open questions) — outlives any single feature |
-| `.claude/`  | Claude Code runtime + active artifacts (skills, agents, hooks, settings, AND `specs/` — alive, ticked off as `/mol:impl` works, deleted on completion) |
-| `CLAUDE.md` | thin entry router — points to where things live; no manual     |
+| Zone (path)              | Purpose                                                                                 |
+|--------------------------|-----------------------------------------------------------------------------------------|
+| `docs/`                  | public-facing documentation (tutorials, API, user guides)                               |
+| `.claude/notes/`         | **passive** internal context (project notes, blueprint, decisions, contracts, handoffs, rubrics, debt, open questions) — outlives any feature |
+| `.claude/specs/`         | **active** runtime artifacts — alive, ticked off as `/mol:impl` works, deleted on completion |
+| `.claude/agents/`, `.claude/skills/`, `.claude/hooks/`, `.claude/settings.json` | Claude Code's own runtime configuration |
+| `CLAUDE.md`              | thin entry router — points to where things live; no manual                              |
 
-The split between `.agent/` and `.claude/` is **active vs passive**:
-notes are kept; specs are intentionally ephemeral. Full rules in
+> Note: `.claude/notes/` (passive *project knowledge*) is a different
+> folder from `.claude/agents/` (Claude Code's *agent definitions*). The
+> naming is deliberately distinct — "notes" = what the agent reads,
+> "agents" = what the agent *is*.
+
+Notes are kept; specs are intentionally ephemeral. Full rules in
 [`docs/design-principles.md`](docs/design-principles.md). Run
 `/mol-agent:check` to verify compliance.
 
@@ -92,7 +99,7 @@ reach for it, and a one-line example.
 | Skill | What | When | Example |
 |---|---|---|---|
 | `/mol:docs` | Mode A: docstring audit keyed to `mol_project.doc.style` (google / rustdoc / jsdoc-tiered / doxygen). Mode B: narrative tutorial (with mandatory two-part Part 1 derivation + Part 2 code mapping for science topics). | After implementing a public API; when adding a tutorial; when an audit finds drift. | `/mol:docs molpy.forces.morse` &nbsp;·&nbsp; `/mol:docs tutorial: running your first MD` |
-| `/mol:note` | Capture an architectural decision into `.agent/notes.md`. Detects conflicts with existing notes / CLAUDE.md, cleans up stale notes, and promotes stable rules into CLAUDE.md (or a `.agent/<topic>.md` page). | When a non-obvious convention is decided in conversation and would otherwise be re-derived later. | `/mol:note use n_atoms (not natoms) in all public signatures` |
+| `/mol:note` | Capture an architectural decision into `.claude/notes/notes.md`. Detects conflicts with existing notes / CLAUDE.md, cleans up stale notes, and promotes stable rules into CLAUDE.md (or a `.claude/notes/<topic>.md` page). | When a non-obvious convention is decided in conversation and would otherwise be re-derived later. | `/mol:note use n_atoms (not natoms) in all public signatures` |
 
 ### 6 — Git workflow (writes / pushes)
 
@@ -167,7 +174,7 @@ Each owns one expertise axis. They split into two kinds —
 | `ci-guard` | reviewer | CI-parity: detects CI config, runs tiered local equivalent |
 | `web-design` | reviewer | Visual / UX on frontend code — tokens, info density, empty/error/loading states, a11y, responsive. Self-skips non-frontend files. |
 | `security-reviewer` | reviewer | Adversarial-input — shell / SQL / path / SSRF / prompt injection, deserialization, secret leakage, missing authorization. Self-skips files outside the attack-surface signal set. |
-| `janitor` | reviewer | Continuous tech-debt servicing — applies the project's captured `.agent/` aesthetic rules to every diff. Pays down debt a little every review. |
+| `janitor` | reviewer | Continuous tech-debt servicing — applies the project's captured `.claude/notes/` aesthetic rules to every diff. Pays down debt a little every review. |
 | `reviewer` | reviewer | Multi-axis aggregator — collects findings from the other reviewers into a severity table, resolves conflicts, renders the verdict. |
 | `playwright-evaluator` | producer-write (artifacts) | Verifies one `ui_runtime` acceptance criterion against a running app via whatever browser-automation MCP is installed. |
 

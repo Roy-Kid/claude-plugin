@@ -7,18 +7,10 @@ argument-hint: "[path or list of files]"
 
 Read CLAUDE.md. Parse `mol_project:` (`$META`).
 
-This skill is the **write-mode counterpart** to the `janitor`
-review axis. The two-layer split is deliberate:
-
-- The `janitor` agent stays read-only — its job is to identify
-  hygiene debt against the project's captured aesthetic rules.
-- This skill orchestrates the apply-and-verify loop —
-  build/test gates, regression revert, batched approval — which
-  is skill-layer work, not single-axis-agent work.
-
-See `plugins/mol/docs/agent-design.md` § "Producer vs reviewer"
-for why the agent stays read-only even though tests/docs agents
-write.
+Write-mode counterpart to the `janitor` review axis: `janitor`
+stays read-only and emits hygiene findings; this skill applies
+them under a build/test gate with regression revert. See
+`plugins/mol/docs/agent-design.md` § "Producer vs reviewer".
 
 ## Scope contract
 
@@ -166,7 +158,7 @@ manual handoffs queued, tests still green.
   entire batch. Never leave the tree in a half-cleaned state.
 - **No new abstractions.** Do not introduce new helpers,
   constants, or modules. Only delete or rename.
-- **No CLAUDE.md / `.agent/` writes.** Rule capture is
+- **No CLAUDE.md / `.claude/notes/` writes.** Rule capture is
   `/mol:note`'s job.
 
 ## Idempotency
@@ -178,10 +170,7 @@ manual / rule-capture handoffs that the first run also flagged.
 
 ## When to invoke
 
-- After `/mol:impl` finishes a feature, before `/mol:commit`,
-  to strip cruft accumulated during exploration.
-- After a `/mol:review` run that flagged hygiene findings on
-  the diff under review.
-- **Not** automatically. The user CLAUDE.md rule "a bug fix
-  doesn't need surrounding cleanup" means cleanup is a separate,
-  explicit operation.
+Explicit only — the user-side rule "a bug fix doesn't need
+surrounding cleanup" makes cleanup a separate operation.
+Reasonable triggers: after `/mol:impl` finishes (before
+`/mol:commit`), or after `/mol:review` flagged hygiene findings.

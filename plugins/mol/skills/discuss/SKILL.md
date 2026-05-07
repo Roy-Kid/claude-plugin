@@ -24,7 +24,7 @@ exploratory threads).
 Restate the topic in one sentence as you understand it, in the
 user's language. List the relevant code surface — files,
 functions, prior commits, related specs under `.claude/specs/`,
-related notes under `.agent/` — that you read before responding.
+related notes under `.claude/notes/` — that you read before responding.
 This anchors the discussion in concrete artifacts and makes the
 "is this about X or Y?" misalignment visible early.
 
@@ -84,7 +84,7 @@ or when the 8-turn cap fires without convergence:
 - say so explicitly and name the reason in one sentence
   (e.g. *"discarded — the question turned out to depend on a
   decision in `auth/` that hasn't been made yet"*)
-- write nothing: no notes, no draft spec, no `.agent/` entry,
+- write nothing: no notes, no draft spec, no `.claude/notes/` entry,
   no `.claude/specs/` entry
 - if a *stable rule* fell out of the discussion (rare but
   possible), suggest the user run `/mol:note` separately —
@@ -120,7 +120,7 @@ or
   on convergence the spec is written by `/mol:spec`, not by
   this skill.
 - **Do not promote** outputs into `.claude/specs/` or
-  `.agent/notes.md` directly. Convergence hands off; discard
+  `.claude/notes/notes.md` directly. Convergence hands off; discard
   leaves no trace. Both paths refuse to write here.
 - **Do not silently merge with `/mol:note`.** If a stable
   rule emerges, surface it as a `/mol:note` suggestion —

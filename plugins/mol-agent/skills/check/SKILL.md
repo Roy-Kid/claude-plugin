@@ -5,7 +5,7 @@ argument-hint: "[path to project root, defaults to cwd]"
 
 # /mol-agent:check — Harness Inspection
 
-Inspect a repository's agent harness — `docs/`, `.agent/`, `.claude/`,
+Inspect a repository's agent harness — `docs/`, `.claude/notes/`, `.claude/`,
 `CLAUDE.md` — and produce one report covering both:
 
 1. **Health** — is the harness installed and internally consistent?
@@ -14,7 +14,7 @@ Inspect a repository's agent harness — `docs/`, `.agent/`, `.claude/`,
 
 Apply to any project that uses the mol harness. **Not** for the
 `claude-plugin/` marketplace repository itself — that has no
-CLAUDE.md / `.agent/` / `.claude/specs/` to inspect; use
+CLAUDE.md / `.claude/notes/` / `.claude/specs/` to inspect; use
 `/mol-plugin:check` for the marketplace's own self-audit.
 
 This skill is **read-only**. It reports findings; it never edits. Use
@@ -27,7 +27,7 @@ re-run) to apply fixes.
 
 Cheap checks first; fail-fast if the harness isn't there at all:
 
-- **Presence**: do `CLAUDE.md` and at least one of `.agent/`,
+- **Presence**: do `CLAUDE.md` and at least one of `.claude/notes/`,
   `.claude/specs/` exist? If none, report *"no harness installed —
   run `/mol-agent:bootstrap`"* and stop. No design rules apply yet.
 - **`mol_project:` frontmatter** (when the project opted into the
@@ -52,35 +52,53 @@ checklist. Walk each section against the target tree.
 
 #### Layering (L)
 
-Inspect the four zones, keeping the **active vs passive** split in
-mind:
+Inspect the four zones, keeping the **active vs passive** split
+inside `.claude/` in mind:
 
 - `docs/` — does it exist? Does it contain only public-user content
   (tutorials, API reference, user guides)? Flag any agent contract,
   handoff, working memory, rubric, **or spec** living under `docs/`.
   (L1, L2)
-- `.agent/` — passive internal context. Look for `notes.md`, plus any
-  `decisions/`, `contracts/`, `handoffs/`, `rubrics/`, `debt/`,
-  `open-questions.md`. Is it free of public-user prose? Is it free of
-  active runtime artifacts (specs)? (L1)
+- `.claude/notes/` — passive internal context. Look for `notes.md`,
+  `architecture.md`, plus any `decisions/`, `contracts/`,
+  `handoffs/`, `rubrics/`, `debt/`, `open-questions.md`. Is it free
+  of public-user prose? Is it free of active runtime artifacts
+  (specs)? (L1)
 - `.claude/specs/` — active runtime artifacts. For each spec:
   - Does it have a **Tasks** section with checkboxes? (L4) Flag if
     missing.
   - (Status/checkbox consistency was already checked in Phase 1.)
-- `.claude/` (the rest) — is it limited to skills, agents, hooks,
-  settings, and the active `specs/` directory? Flag any long-lived
-  knowledge or stored domain rules embedded inside skill or agent
-  bodies that belong in CLAUDE.md or `.agent/`. (L2)
+- `.claude/agents/`, `.claude/skills/`, `.claude/hooks/`,
+  `.claude/settings.json` — Claude Code's own runtime config. Flag
+  long-lived domain knowledge embedded inside skill or agent bodies
+  that belongs in `.claude/notes/` or CLAUDE.md instead. (L2). Also
+  flag if project notes have been mixed into `.claude/agents/` (a
+  common newcomer mistake — `agents/` is for *agent definitions*
+  loaded by Claude Code, not for project notes; project notes go in
+  `.claude/notes/`).
+- Anything *else* directly under `.claude/` (a `.md` or directory
+  not listed above) — flag as zone-mixing: passive content goes in
+  `.claude/notes/`, active in `.claude/specs/`, runtime config in
+  its conventional subfolders. Loose files at `.claude/` root are
+  always a smell. (L1, L2)
 - `CLAUDE.md` — line-count it. ≤ ~150 lines is the soft budget. Flag
   if CLAUDE.md embeds large rule sets, full architecture diagrams,
   long examples, or anything else that should be linked rather than
   inlined. (L3)
 
 For projects that opt into the `mol` plugin contract, confirm
-CLAUDE.md starts with a `mol_project:` frontmatter block, and that
-`specs_path` points under `.claude/` (canonically `.claude/specs/`).
-Flag if `specs_path` is set to `docs/` or `.agent/` — that's a
-zone-mixing error.
+CLAUDE.md starts with a `mol_project:` frontmatter block, and that:
+
+- `specs_path` points under `.claude/specs/` (canonically just
+  `.claude/specs/`). Flag if set to `docs/`, `.claude/notes/`, or
+  bare `.claude/` — that's a zone-mixing error.
+- `notes_path` points under `.claude/notes/` (canonically
+  `.claude/notes/notes.md`). Flag if set under `.claude/specs/`,
+  `.claude/` root (e.g. `.claude/NOTES.md`), `docs/`, or anywhere
+  outside `.claude/notes/` — passive content does not belong in
+  the active or runtime-config zones. This is the rule whose
+  violation `/mol:map` used to silently propagate; do not enable
+  it.
 
 #### Layer presence
 
@@ -154,7 +172,7 @@ Spot-check for the patterns listed in
 
 - template sprawl (large skill/agent set on a tiny repo)
 - knowledge in `.claude/` (rules embedded in skill/agent bodies that
-  should be in CLAUDE.md or `.agent/`)
+  should be in CLAUDE.md or `.claude/notes/`)
 - contracts in `docs/`
 - CLAUDE.md as manual
 - fake precision (architecture rules invented without evidence)

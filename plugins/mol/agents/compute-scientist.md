@@ -74,7 +74,7 @@ Detect HPC relevance per file under review:
 - `import torch` / `from torch.distributed` / `from torch.cuda`
 - `.cu` / `.cuh` files / `__global__` / `<<<...>>>` / `cudaMalloc`
 - `<xsimd/...>` / `xsimd::` in C++ source
-- CLAUDE.md or `.agent/notes.md` declaring GPU / DDP / SIMD targets
+- CLAUDE.md or `.claude/notes/notes.md` declaring GPU / DDP / SIMD targets
 
 When at least one signal hits, flag:
 
