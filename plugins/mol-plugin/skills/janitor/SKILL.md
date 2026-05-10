@@ -1,104 +1,58 @@
 ---
-description: Review every SKILL.md and agent .md in the marketplace for clarity, orthogonality, and brevity. Normalizes language to plain imperative rules ("do X when Y"), enforces one responsibility per file, separates capability-oriented skills from role-oriented agents, and removes duplicate responsibilities. Applies safe rewrites in place; surfaces judgement calls (splits, moves, merges, promotion of shared rules to docs) as AMBIGUITY without editing. Pairs with /mol-plugin:check — that skill audits structure, this skill audits content. Writes inside plugins/<plugin>/skills/ and plugins/<plugin>/agents/ only.
+description: Review every SKILL.md and agent .md in the marketplace for clarity, orthogonality, and brevity, applying safe rewrites in place and flagging judgement calls as AMBIGUITY. Pairs with `/mol-plugin:check` — that skill audits structure, this skill audits content.
 argument-hint: "[<plugin>]"
 ---
 
 # /mol-plugin:janitor — Skill & Agent Content Janitor
 
-Walk every `SKILL.md` and agent `.md` in the marketplace, normalize
-prose to plain operational language, and enforce one clear
-responsibility per file. Pairs with `/mol-plugin:check` (structural
-audit) — that skill validates frontmatter and cross-references; this
-skill validates *content*.
+Walk every `SKILL.md` and agent `.md`, normalize prose to plain operational language, enforce one clear responsibility per file. Pairs with `/mol-plugin:check` (structural audit).
 
-Scope: with no argument, scans every plugin listed in
-`.claude-plugin/marketplace.json`. With a plugin name, scans just
-that plugin.
+Scope: no argument → every plugin in `.claude-plugin/marketplace.json`. With plugin name → just that plugin.
 
 ## Procedure
 
 ### 1. Inventory
 
-Build the file list:
+Build file list:
 
 - `plugins/<plugin>/skills/<skill>/SKILL.md`
 - `plugins/<plugin>/agents/<agent>.md`
 
-Restrict to one plugin if a name was given. Skip files whose YAML
-frontmatter fails to parse — that class of error belongs to
-`/mol-plugin:check`.
+Restrict to one plugin if given. Skip files whose YAML frontmatter fails to parse — that belongs to `/mol-plugin:check`.
 
 ### 2. Read each file
 
-Extract these surfaces from every file:
+Extract:
 
 - frontmatter `description` (the contract)
-- H1 title and the one-paragraph purpose under it
+- H1 title + one-paragraph purpose
 - Procedure / role-body sections
 - Guardrails / Output / Idempotency sections
 
 ### 3. Audit per file
 
-Check each file against the five janitor rules:
+Five janitor rules:
 
-- **Single responsibility.** The frontmatter `description` must
-  name one job. Flag for split when the description lists more
-  than one verb-equivalent ("validate AND fix", "scan AND
-  publish", "review AND apply").
-- **Correct placement.** Skills are capability-oriented — a verb
-  the user runs (`/mol:fix`, `/mol-plugin:release`). Agents are
-  role-oriented — a perspective an orchestrator delegates to
-  (`reviewer`, `scientist`, `janitor`). Flag a skill that reads
-  like a role brief, or an agent that reads like a runnable verb.
-- **Actionable language.** Steps and rules use short imperative
-  phrasing — "do X when Y", "refuse when Z", "stop and report".
-  Flag motivational tone, marketing language, vague advice ("be
-  thoughtful", "carefully consider"), and abstract terms with no
-  behavioral consequence ("ensure quality", "promote excellence").
-  Also flag prose paragraphs whose content is *purely
-  enumerable* — three or more parallel facts welded together
-  with "and" / "as well as" / "plus" — and propose converting
-  them to a bulleted list. Do **not** flag prose that carries
-  causal or conditional logic ("X because Y", "unless Z") —
-  that reasoning would fragment under bullets.
-- **Length discipline.** Skills should sit in the 200–500 word
-  range. A skill is allowed to exceed that *only* when the extra
-  prose carries rules that change execution — ordering
-  constraints, branch decisions, recovery paths, refusal
-  conditions. Flag a skill that is **both** over 500 words **and**
-  contains content matching the actionable-language exclusions
-  (motivational tone, repeated principles, background that does
-  not gate behavior, examples that don't change the procedure).
-  Length alone is not a finding. When the trim required is more
-  than language-level — i.e. the skill is genuinely two skills
-  welded together — surface as AMBIGUITY with rule
-  `single-responsibility` or `correct-placement`; splitting
-  belongs to the author.
-- **No duplicate responsibility.** Compare every file's job
-  against every other file in the marketplace. Flag the pair when
-  two files claim the same responsibility.
+- **Single responsibility.** Frontmatter `description` names one job. Flag for split when description lists more than one verb-equivalent ("validate AND fix", "scan AND publish", "review AND apply").
+- **Correct placement.** Skills are capability-oriented (verb the user runs: `/mol:fix`, `/mol-plugin:release`). Agents are role-oriented (perspective an orchestrator delegates to: `reviewer`, `scientist`, `janitor`). Flag a skill that reads like a role brief, or an agent that reads like a runnable verb.
+- **Actionable language.** Steps and rules use short imperative phrasing — "do X when Y", "refuse when Z", "stop and report". Flag motivational tone, marketing language, vague advice ("be thoughtful", "carefully consider"), abstract terms with no behavioral consequence ("ensure quality", "promote excellence"). Also flag prose paragraphs whose content is *purely enumerable* — three or more parallel facts welded with "and"/"as well as"/"plus" — and propose converting to bullets. Do **not** flag prose carrying causal/conditional logic ("X because Y", "unless Z").
+- **Length discipline.** Skills should sit in 200–500 word range. Allowed to exceed *only* when extra prose carries rules that change execution — ordering, branches, recovery, refusal. Flag a skill **both** over 500 words **and** containing actionable-language exclusions. Length alone is not a finding. Trim required is more than language-level (genuinely two skills welded) → AMBIGUITY with `single-responsibility` or `correct-placement`; splitting belongs to author.
+- **No duplicate responsibility.** Compare every file's job against every other. Flag the pair when two files claim the same responsibility.
 
 ### 4. Audit cross-file
 
-- **Shared rules belong in docs.** A rule repeated verbatim in
-  three or more files belongs in `plugins/mol/rules/` (or the
-  plugin's `docs/` folder) and should be referenced, not inlined.
-- **Local rules stay local.** A rule that applies to exactly one
-  skill must live in that skill, not in shared docs.
+- **Shared rules belong in docs.** Rule repeated verbatim in 3+ files belongs in `plugins/mol/rules/` (or plugin's `docs/`) and should be referenced.
+- **Local rules stay local.** Rule applying to exactly one skill stays in that skill.
 
 ### 5. Apply safe rewrites
 
-For each finding the audit considers safe — language normalization,
-deleting repeated principles, removing motivational tone, replacing
-vague phrasing with imperatives — apply the minimal patch in place.
+Findings the audit considers safe — language normalization, deleting repeated principles, removing motivational tone, replacing vague phrasing with imperatives — apply minimal patch in place.
 
-The frontmatter `description` and the H1 heading are part of the
-invocation contract. Tighten their language; do not rename them.
+Frontmatter `description` and H1 are part of the invocation contract. Tighten language; do not rename.
 
 ### 6. Surface judgement calls as AMBIGUITY
 
-Do not act on findings that require a judgement call. Surface them
-and stop:
+Do not act; surface and stop:
 
 - splitting one file into two
 - moving a skill to an agent (or vice versa)
@@ -106,13 +60,11 @@ and stop:
 - merging two files
 - changing a contract surface (`description`, H1, argument-hint)
 
-The author resolves AMBIGUITY entries; this skill does not.
+Author resolves AMBIGUITY entries.
 
 ### 7. Verify
 
-After all writes, run `/mol-plugin:check` once. If it reports an
-error introduced by this run, revert the offending file with
-`git checkout -- <path>` and re-flag the finding as AMBIGUITY.
+After all writes, run `/mol-plugin:check` once. Error introduced by this run → revert offending file with `git checkout -- <path>` and re-flag as AMBIGUITY.
 
 ### 8. Output
 
@@ -128,7 +80,7 @@ Severity-sorted findings:
   Diff: <one-line summary if applied>
 ```
 
-End with a count summary:
+Count summary:
 
 | Plugin       | applied | ambiguity |
 |--------------|---------|-----------|
@@ -136,28 +88,16 @@ End with a count summary:
 | mol-agent    |         |           |
 | mol-plugin   |         |           |
 
-End with a one-line summary (F2): files reviewed, lines
-simplified, overlap removed, ambiguities outstanding.
+End with one-line F2 summary: files reviewed, lines simplified, overlap removed, ambiguities outstanding.
 
 ## Guardrails
 
-- **Do not invent new architecture.** When two files overlap, surface
-  AMBIGUITY — never merge, rename, or move files on your own
-  authority.
-- **Do not change contract surfaces.** Frontmatter `description`,
-  `argument-hint`, and the H1 heading are how users invoke a skill.
-  Tighten language inside; never alter what the skill *is*.
-- **Do not edit non-target files.** READMEs, `plugin.json`,
-  `marketplace.json`, and `docs/` are out of scope. Those belong to
-  `/mol-plugin:release`, `/mol-plugin:check`, and the author.
-- **Do not touch user-authored prose** inside `docs/` or `tests/`.
-  Janitor scope is `skills/` and `agents/` only.
-- **Behavior-preserving by contract.** A janitor pass must not
-  change which skills exist, how they are invoked, or what they
-  promise. If a rewrite would, revert it.
+- **Do not invent new architecture.** Two files overlap → AMBIGUITY; never merge/rename/move on your own.
+- **Do not change contract surfaces.** Frontmatter `description`, `argument-hint`, H1. Tighten language inside; never alter what the skill *is*.
+- **Do not edit non-target files.** READMEs, `plugin.json`, `marketplace.json`, `docs/` are out of scope.
+- **Do not touch user-authored prose** in `docs/` or `tests/`. Janitor scope is `skills/` and `agents/` only.
+- **Behavior-preserving by contract.** Pass must not change which skills exist, how they're invoked, or what they promise. Rewrite would → revert.
 
 ## Idempotency
 
-Re-running `/mol-plugin:janitor` on a clean tree reports zero
-applied changes. If a second pass produces new applied edits, the
-first pass was incomplete — inspect the diff before applying again.
+Re-run on clean tree → zero applied changes. Second pass produces new applied edits → first pass was incomplete; inspect diff before applying again.

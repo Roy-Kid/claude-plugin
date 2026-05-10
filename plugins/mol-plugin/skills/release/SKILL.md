@@ -1,112 +1,77 @@
 ---
-description: Cut a unified release of the molcrafts marketplace. All plugins share one version. Bumps every plugin's plugin.json + the matching marketplace.json entries together, runs /mol-plugin:check, gates the commit through /mol:ship commit, and prepares one local commit + one local tag named v<X.Y.Z>. Does not push — pair with /mol:push + /mol:pr to publish the marketplace.json bump through upstream's default branch, then /mol:tag to push the tag and trigger the GitHub Actions release workflow. Writes plugin.json files and marketplace.json only — never a CHANGELOG.
+description: Cut a unified release of the molcrafts marketplace — bumps every plugin's `plugin.json` + matching `marketplace.json` entries (all plugins share one version), runs `/mol-plugin:check`, and prepares one local commit + tag `v<X.Y.Z>`. Does not push; pair with `/mol:push` + `/mol:pr` + `/mol:tag` to publish.
 argument-hint: "<patch | minor | major>"
 ---
 
 # /mol-plugin:release — Plugin Release
 
-Cut a unified release of the molcrafts marketplace. Every plugin
-shares the same version; one bump advances them all and produces
-a single tag.
+Cut a unified release of the molcrafts marketplace. All plugins share one version; one bump advances them all + produces one tag.
 
-This skill writes only:
+Write surface:
 
-- `plugins/<plugin>/.claude-plugin/plugin.json` (`version` field)
-  for every plugin under `plugins/`
-- `.claude-plugin/marketplace.json` (matching `version` for every
-  plugin entry)
-- one git commit + one git tag (when the user opts in)
+- `plugins/<plugin>/.claude-plugin/plugin.json` (`version` field) for every plugin
+- `.claude-plugin/marketplace.json` (matching `version` for every plugin entry)
+- one git commit + one git tag (when user opts in)
 
-This skill does **not** write or maintain CHANGELOG files.
-Release notes live on the GitHub release and in `git log`.
+**Does not** write CHANGELOG. Release notes live on the GitHub release + `git log`.
 
 ## Procedure
 
 ### 1. Parse arguments
 
-Form: `<bump>` where bump ∈ `patch | minor | major`.
-
-No plugin selection. Releases are unified: every plugin under
-`plugins/` advances together. If you only want to ship one
-plugin, that's a sign the unified-version policy is wrong for
-this marketplace — raise it as a design change, don't simulate
-it by skipping plugins.
+Form: `<bump>` ∈ `patch | minor | major`. No plugin selection — releases are unified. Wanting to ship one plugin → unified-version policy is wrong; raise as design change, don't simulate.
 
 ### 2. Confirm clean tree
 
-`git status --porcelain` must be empty. If not, stop and ask the
-user to commit or stash. Releases on dirty trees produce noisy
-diffs and ambiguous tags.
-
-Confirm we're on the default branch (or warn if not).
+`git status --porcelain` empty; else stop, ask user to commit/stash. Confirm on default branch (warn if not).
 
 ### 3. Run validation
 
-Invoke `/mol-plugin:check`. If the verdict is `FIX REQUIRED`,
-stop. The user can override with explicit confirmation, but
-default is to halt.
+Invoke `/mol-plugin:check`. Verdict `FIX REQUIRED` → stop (user can override with explicit confirmation).
 
 ### 4. Compute the new version
 
-- Read the current shared version from any `plugin.json`
-  (they should all agree; if they don't, stop and tell the user
-  to align them first — see § Drift detection).
-- Bump per requested level (semver: `0.1.3` + patch → `0.1.4`,
-  `0.1.3` + minor → `0.2.0`, `0.1.3` + major → `1.0.0`).
+- Read shared version from any `plugin.json` (must agree; drift → § 5).
+- Bump per level (semver: `0.1.3` + patch → `0.1.4`, + minor → `0.2.0`, + major → `1.0.0`).
 - Record old → new.
 
 ### 5. Drift detection
 
-If any plugin's `plugin.json` has a different `version` from the
-others (or different from its `marketplace.json` entry), stop.
-Report which plugins are out of sync. Fixing drift is a
-prerequisite of a unified release; the user either:
+Any plugin's `plugin.json` differs from others (or from its `marketplace.json` entry) → stop. Report which plugins are out of sync. User either:
 
 - aligns by hand and re-runs, or
-- asks the skill to align first via a separate "drift fix" commit
-  (then re-runs the release on the aligned tree).
+- asks for separate "drift fix" commit, then re-runs on aligned tree.
 
-This skill does not silently absorb drift, because doing so would
-hide the question of *which* version is correct.
+Never silently absorb drift.
 
 ### 6. Reach approval
 
-Show the user:
+Show:
 
-- old shared version → new shared version
-- the proposed commit message (`release: v<new>`)
-- the proposed tag (`v<new>`)
-- the list of plugins being advanced (just for visibility — they
-  all advance together)
+- old → new shared version
+- proposed commit message (`release: v<new>`)
+- proposed tag (`v<new>`)
+- list of plugins being advanced (visibility only)
 
 Wait for go-ahead.
 
 ### 7. Apply
 
-**Switch to a release branch first.** The release commit and tag
-live on a dedicated `release/v<new>` branch, not on `master`.
-Two reasons:
+**Switch to a release branch first.** Release commit + tag live on `release/v<new>`, not `master`:
 
-- `/mol:push` (correctly) refuses to push the default branch from
-  a fork. Releasing on master would force a bypass every release.
-- Master stays untouched until the PR is merged, so a botched
-  release is just a deletable branch — no `git reset --hard
-  upstream/master` needed.
+- `/mol:push` refuses to push the default branch from a fork.
+- Master stays untouched until PR merges; botched release = deletable branch.
 
 ```
 git switch -c release/v<new>
 ```
 
-If `release/v<new>` already exists locally, stop. That means a
-previous release attempt for this version is in flight or was
-abandoned without cleanup. The user must delete it explicitly
-(`git branch -D release/v<new>`) and re-run.
+`release/v<new>` already exists locally → stop. User deletes (`git branch -D release/v<new>`) and re-runs.
 
 For every plugin under `plugins/`:
 
-- write its `plugin.json` with the new version
-- update its entry in `.claude-plugin/marketplace.json` with the
-  same new version
+- write `plugin.json` with new version
+- update entry in `.claude-plugin/marketplace.json` with same new version
 
 Stage:
 
@@ -115,32 +80,20 @@ git add plugins/*/.claude-plugin/plugin.json
 git add .claude-plugin/marketplace.json
 ```
 
-Run the pre-commit gate by invoking `/mol:ship commit`. If the
-verdict is **BLOCK**, stop and surface the blocker. The user has
-already approved the bump in Step 6, so this skill provides its
-own commit message ("release: v<new>") and does not delegate to
-`/mol:commit` (which would re-prompt for message approval).
-
-If the gate reports **PROCEED**, commit and tag (on the release
-branch):
+Run `/mol:ship commit`. **BLOCK** → stop and surface blocker. **PROCEED** → commit + tag (skill provides its own message; does not delegate to `/mol:commit`):
 
 ```
 git commit -m "release: v<new>"
 git tag v<new>
 ```
 
-One commit, one tag, on `release/v<new>`. Master is untouched.
-
-Do **not** push. The release commit and the tag stay local; the
-publish phase is the user's next step (see § 8).
+One commit, one tag, on `release/v<new>`. Master untouched. **Do not push** — publish phase is § 8.
 
 ### 8. Report
 
-One-line summary:
-`released v0.1.1 → v0.1.2 (tag v0.1.2, N plugins advanced)`
+One-line summary: `released v0.1.1 → v0.1.2 (tag v0.1.2, N plugins advanced)`
 
-Then print the **publish sequence**, in this order — both halves
-matter, and the order is load-bearing:
+Print **publish sequence** (order is load-bearing):
 
 ```
 Next steps to publish v<new>:
@@ -173,32 +126,18 @@ version visible; the tag-push half is what triggers the GitHub
 Actions release workflow.
 ```
 
-Single-remote layouts (no `upstream`) collapse steps 1–3 to a
-single `git push` to the canonical repo's default branch (still
-from `release/v<new>`, then fast-forward master to it locally),
-but the two phases (branch then tag) still apply.
+Single-remote layouts (no `upstream`) collapse 1–3 to one `git push` to the canonical default branch (still from `release/v<new>`, then fast-forward master locally); two phases (branch then tag) still apply.
 
 ## Guardrails
 
-- **Do not** push to a remote. Tagging and committing locally is
-  the boundary.
-- **Do not** force-overwrite an existing tag. If `v<new>` already
-  exists, stop.
-- **Do not** create or modify any CHANGELOG file. The marketplace
-  policy is "no CHANGELOG; release notes belong on GitHub
-  releases and in `git log`."
-- **Do not** release if `/mol-plugin:check` reports `FIX
-  REQUIRED` without explicit user override.
-- **Do not** advance a subset of plugins. Unified versioning means
-  all-or-nothing.
+- **Do not** push to a remote.
+- **Do not** force-overwrite an existing tag. `v<new>` already exists → stop.
+- **Do not** create or modify any CHANGELOG file.
+- **Do not** release if `/mol-plugin:check` reports `FIX REQUIRED` without explicit user override.
+- **Do not** advance a subset of plugins.
 
 ## Idempotency
 
-Releasing the *same* version twice is an error: tag collision
-stops the run. To redo a botched release, the user must delete
-the tag manually (locally and remotely) and re-run; this skill
-does not delete tags.
+Same version twice = error (tag collision stops run). Redo a botched release → user deletes the tag manually (locally + remotely) and re-runs; this skill does not delete tags.
 
-A run that reaches the approval gate and is rejected leaves the
-tree exactly as it found it. No file writes happen before
-approval.
+Run reaching approval gate + rejected → tree exactly as found. No file writes before approval.

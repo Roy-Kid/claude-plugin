@@ -1,79 +1,43 @@
 ---
-description: Build or refresh the project blueprint at `.claude/notes/architecture.md` — a passive map of modules, public surfaces, style conventions, and layer roles. Delegates the actual inventory work to the `architect` agent (inventory mode); diffs the proposal against the existing blueprint; surfaces the diff to the user; writes only after explicit user approval. Idempotent — a re-run with no drift reports "blueprint already current" and exits without writing. Pairs with `librarian` (which consumes this blueprint) and `/mol:spec` (which consults `librarian` at planning time).
+description: Build or refresh the project blueprint at `.claude/notes/architecture.md` — a passive map of modules, public surfaces, and layer roles consumed by the `librarian` agent at spec time. Use whenever the architecture has drifted; idempotent and writes only after explicit user approval.
 argument-hint: "[<scope-path>]"
 ---
 
 # /mol:map — Project Blueprint Builder
 
-Read CLAUDE.md. Parse `mol_project:` (`$META`). If missing, emit the
-adoption hint and stop.
+Read CLAUDE.md → parse `mol_project:` (`$META`); else emit adoption hint and stop.
 
-Resolve the blueprint path: always `<root>/.claude/notes/architecture.md`.
-Do **not** derive it from `$META.notes_path` — passive internal
-context belongs under `.claude/notes/` per
-`plugins/mol/rules/design-principles.md` L1, regardless of where
-`notes_path` happens to point. A project whose `notes_path` is
-configured outside `.claude/notes/` is itself an L1 violation and
-`/mol-agent:check` will flag it; this skill must not propagate that
-violation by colocating the blueprint with notes.
+Blueprint path: always `<root>/.claude/notes/architecture.md` — passive internal context belongs under `.claude/notes/` per `plugins/mol/rules/design-principles.md` L1, regardless of `$META.notes_path`. (A `notes_path` outside `.claude/notes/` is itself an L1 violation flagged by `/mol-agent:check`.) Create `.claude/notes/` if missing.
 
-Create `.claude/notes/` if missing. The blueprint lives there
-because it is **passive internal context** — it outlives any single
-feature and exists to inform planning, not to drive runtime behavior.
-
-## Why this skill exists
-
-`/mol:spec` Step 4.5 consults `librarian`, which reads the
-blueprint this skill maintains. This skill **builds and refreshes**
-the blueprint — it does not consume it (`librarian`'s job) and it
-does not enforce compliance against it (`architect`'s review-mode
-job; see the O1 boundary in `design-principles.md`). The single
-responsibility: a fresh, accurate map persisted under user approval.
+Single responsibility: build/refresh the blueprint. `librarian` consumes it; `architect` (review mode) enforces compliance against it (O1 in `design-principles.md`). `/mol:spec` Step 4.5 consults `librarian`, which reads what this skill writes.
 
 ## Procedure
 
 ### 1. Inspect the scope
 
-If an argument was supplied, treat it as the scope path (a
-directory or package name). Otherwise inspect the whole repo. In
-either case, run a quick discovery pass:
+`$ARGUMENTS` = scope path (dir or package); else whole repo. Discovery pass:
 
-- glob files matching `$META.language` (or auto-detect dominant
-  extensions if absent)
-- read the workspace manifest (`pyproject.toml`, `Cargo.toml`,
-  `package.json`, `go.mod`) if present
-- read `$META.arch.rules_section` from CLAUDE.md plus the notes
-  file (passive context that may name modules already)
-- read the existing blueprint if it exists, so you can diff at
-  Step 4
+- glob `$META.language` files (auto-detect dominant extensions if absent)
+- read workspace manifest (`pyproject.toml`, `Cargo.toml`, `package.json`, `go.mod`) if present
+- read `$META.arch.rules_section` from CLAUDE.md + the notes file
+- read existing blueprint (for Step 4 diff)
 
-State the inspection result to the user in one paragraph. Do not
-write anything yet.
+Report inspection in one paragraph. No writes yet.
 
 ### 2. Delegate inventory to `architect` (inventory mode)
 
-Invoke the `architect` agent with `mode: inventory` and the scope
-path. The agent uses its `arch.style` template (layered /
-crate-graph / backend-pillars / package-tree / monorepo) to draft
-a structured catalog with four sections per module:
+Invoke `architect` with `mode: inventory` + scope path. Agent uses its `arch.style` template (layered / crate-graph / backend-pillars / package-tree / monorepo) to draft a catalog with four sections per module:
 
 - **Module list** — one bullet per module/package/crate.
-- **Public surface** — the exported symbols / re-exports / public
-  API names per module.
-- **Style summary** — naming, construction patterns, error-handling
-  idioms observed in that module.
-- **Layer roles** — which layer of the `arch.rules_section` this
-  module occupies (e.g. "facade", "compute kernel", "wrapper").
+- **Public surface** — exported symbols / re-exports / public API names.
+- **Style summary** — naming, construction patterns, error-handling idioms.
+- **Layer roles** — which layer of `arch.rules_section` the module occupies.
 
-The agent returns markdown text only. It does NOT write to disk —
-that is this skill's job. Capture the agent's full output verbatim
-as the **proposed blueprint**.
+Agent returns markdown only; does NOT write to disk. Capture verbatim as **proposed blueprint**.
 
 ### 3. Draft the blueprint document
 
-Wrap the architect's inventory in a stable-markered shell so future
-re-runs can replace the managed section in place (idempotency rule
-I3). The on-disk format:
+Wrap the inventory in stable markers (idempotency rule I3):
 
 ```markdown
 # Project blueprint
@@ -91,81 +55,54 @@ _Generated YYYY-MM-DD by /mol:map._
 <!-- mol:map:managed end -->
 ```
 
-Free-form annotations the user adds **after** the closing marker
-are preserved across re-runs. Anything inside the markers is
-treated as machine-managed and may be replaced.
+Content outside markers is preserved across re-runs.
 
 ### 4. Diff against the existing blueprint
 
-If `.claude/notes/architecture.md` already exists, read it and compute a
-human-readable diff between the existing managed section and the
-proposed managed section:
+If `.claude/notes/architecture.md` exists, compute human-readable diff between existing managed section and proposed:
 
 - **Added** modules / public surface / style notes
-- **Removed** modules (file or symbol no longer present in repo)
-- **Changed** entries (e.g. public surface widened, layer role
-  reassigned)
+- **Removed** modules (file or symbol gone)
+- **Changed** entries (surface widened, layer reassigned)
 
-Render the diff as a short bulleted summary, not a unified-diff
-block — the goal is for the user to *understand* the change, not
-to review every character.
+Render as bulleted summary, not unified diff.
 
-If the diff is empty (proposed managed section equals existing
-managed section, modulo the `_Generated_` line):
+If diff is empty (modulo `_Generated_` line):
 
 > **blueprint already current** — no write needed.
 
-Stop. Do not touch the file. This is the idempotent no-op branch
-(I1) — re-running `/mol:map` after a successful run is cheap and
-safe.
+Stop. No file touch. (I1 idempotent no-op branch.)
 
 ### 5. User-confirm gate (HARD — never skip)
 
-Show the diff (or, on first run, the full proposed inventory) to
-the user. **Wait for approval.** Do not write past this gate.
+Show diff (or full proposed inventory on first run). **Wait for approval.** No write past this gate.
 
-A wrong blueprint entry propagates into every `/mol:spec` that
-consults `librarian`, so the user must confirm what's being
-recorded before it lands on disk — same pattern as `/mol:spec`
-Step 6's reuse-candidate approval gate.
+Acceptable responses:
 
-Acceptable user responses:
-
-- approve / yes / 同意 → proceed to Step 6.
-- edit X / fix Y / reword Z → apply the requested tweak inline if
-  surface, or re-invoke `architect` with a constraint hint if
-  material; re-diff at Step 4.
-- defer → stop without writing; no draft is persisted (consistent
-  with this skill's "no half-state on disk" contract).
+- approve / yes / 同意 → Step 6.
+- edit X / fix Y / reword Z → tweak inline if surface, else re-invoke `architect` with constraint hint; re-diff at Step 4.
+- defer → stop without writing; no draft persisted.
 
 ### 6. Write the blueprint
 
-After explicit approval, write the managed section into
-`.claude/notes/architecture.md`:
+After approval:
 
-- if the file does not exist, create it with the shell shown in
-  Step 3.
-- if it exists, replace only the content between `<!-- mol:map:managed begin -->`
-  and `<!-- mol:map:managed end -->`. Content outside the markers
-  is preserved verbatim.
+- file absent → create with shell from Step 3.
+- file exists → replace only between `<!-- mol:map:managed begin -->` and `<!-- mol:map:managed end -->`.
 
 ### 7. Report
 
-Print:
-
 - blueprint path
-- one-line per change category: *"3 modules added, 1 removed,
-  2 surface changes."*
-- a hint that `librarian` will pick this up on the next `/mol:spec`
-  Step 4.5
+- one line per change category: *"3 modules added, 1 removed, 2 surface changes."*
+- hint: `librarian` picks this up on next `/mol:spec` Step 4.5.
 
-End with a one-line user-facing summary (F2):
+One-line F2 summary:
 
 ```
 /mol:map: blueprint refreshed at .claude/notes/architecture.md (3 added, 1 removed)
 ```
 
-For the no-op branch:
+No-op branch:
 
 ```
 /mol:map: blueprint already current; no changes
@@ -173,28 +110,13 @@ For the no-op branch:
 
 ## Guardrails
 
-- **Read-only on production code.** This skill writes only the
-  blueprint file under `.claude/notes/`. It never edits source, specs,
-  or CLAUDE.md.
-- **No write past the gate.** Step 5's user approval is mandatory;
-  there is no `--yes` shortcut. The blueprint shapes future
-  planning, so silent writes are the wrong polarity.
-- **Idempotent re-runs.** A re-run with no drift must produce zero
-  filesystem changes — the no-op branch in Step 4 enforces this.
-- **No agent-to-agent calls.** This skill orchestrates `architect`
-  (inventory mode); `architect` does not call `librarian` and
-  `librarian` does not call `architect` (O2). All routing happens
-  here.
-- **Stable markers required.** Every write goes between
-  `<!-- mol:map:managed begin -->` / `<!-- mol:map:managed end -->`
-  so re-runs update in place rather than appending.
-- **Do not promote to CLAUDE.md.** The blueprint lives under
-  `.claude/notes/` permanently; CLAUDE.md is a thin router (L3) and may
-  link to the blueprint but must not embed it.
+- **Read-only on production code.** Writes only the blueprint under `.claude/notes/`. Never edits source, specs, or CLAUDE.md.
+- **No write past the gate.** Step 5 mandatory; no `--yes` shortcut.
+- **Idempotent re-runs.** No drift → zero filesystem changes.
+- **No agent-to-agent calls.** This skill orchestrates `architect` (inventory mode); routing happens here (O2).
+- **Stable markers required.** Every write between `<!-- mol:map:managed begin -->` / `<!-- mol:map:managed end -->`.
+- **Do not promote to CLAUDE.md.** Blueprint lives under `.claude/notes/`; CLAUDE.md is a thin router (L3) and may link but not embed.
 
 ## Bilingual
 
-If the user argument is in Chinese, the report and diff summary
-are in Chinese; the markdown headings, frontmatter keys, and
-stable-marker comments stay in English so future tooling parses
-deterministically.
+Chinese argument → report and diff summary in Chinese; markdown headings, frontmatter keys, and stable-marker comments stay in English for deterministic parsing.

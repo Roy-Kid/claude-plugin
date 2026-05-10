@@ -1,24 +1,19 @@
 ---
-description: Multi-axis static code review — fans out to single-axis review agents, collects their findings, hands them to the `reviewer` agent for aggregation + verdict. **Static only**; runtime evaluation (Playwright / benchmarks / numerical oracles) is suggested via `acceptance.md` `type` fields and dispatched manually to runtime-evaluator skills like `/mol:web`, per `plugins/mol/rules/evaluator-protocol.md`. Read-only. Supports `--axis=<name>` to scope to a single review dimension.
+description: Multi-axis static code review — fans out to single-axis review agents and aggregates findings into one verdict. Use after writing or modifying code; static only — runtime evaluation is dispatched separately via `/mol:web` and other evaluator skills per `acceptance.md` `type` fields.
 argument-hint: "[<path-or-spec-slug>] [--axis=<name>]"
 ---
 
 # /mol:review — Multi-Axis Code Review
 
-Read CLAUDE.md. Parse `mol_project:` (`$META`).
+Read CLAUDE.md → parse `mol_project:` (`$META`).
 
 ## Step 1 — Parse arguments
 
-`$ARGUMENTS` may contain any combination of:
+`$ARGUMENTS` may contain:
 
-- A path / list of modified files. Otherwise default to
-  `git diff --name-only` for recent uncommitted / unpushed changes.
-- A spec slug (no slash, no dot, matches a file under
-  `$META.specs_path`). When present, additionally read
-  `{$META.specs_path}{slug}.acceptance.md` and use its
-  `type: code` criteria to focus the static reviewers.
-- `--axis=<name>` — scope the review to a single dimension.
-  Recognized values:
+- Path / list of modified files; else default to `git diff --name-only`.
+- Spec slug (no slash, no dot, matches a file under `$META.specs_path`). Present → also read `{$META.specs_path}{slug}.acceptance.md` and use its `type: code` criteria to focus reviewers.
+- `--axis=<name>` — scope to one dimension:
 
   | Axis flag | Agent invoked |
   |---|---|
@@ -33,81 +28,49 @@ Read CLAUDE.md. Parse `mol_project:` (`$META`).
   | `security` | `security-reviewer` |
   | `hygiene` | `janitor` |
 
-  If `--axis` is absent, the working set is **all axes** (the gating
-  rules below still apply).
+  No `--axis` → working set is **all axes** (gating still applies).
 
-If `--axis=<name>` names an axis whose gate is not satisfied (e.g.
-`--axis=science` on a project with `science.required: false`), refuse
-and explain.
+`--axis=<name>` whose gate fails (e.g. `--axis=science` with `science.required: false`) → refuse and explain.
 
-## Step 2 — Fan out to the working set (single message, parallel)
+## Step 2 — Fan out to working set (single message, parallel)
 
-Delegate in parallel to every agent in the working set. The full set
-(when `--axis` is absent) is:
+Delegate in parallel. Full set (no `--axis`):
 
-1. **Architecture** — `architect` agent.
-2. **Performance** — `optimizer` agent.
-3. **Documentation** — `documenter` agent (Mode A: audit).
-4. **User experience** — `undergrad` agent (user-facing API,
-   onboarding, extension story).
-5. **Product / public-API** — `pm` agent (public-surface naming,
-   breaking-change risk, downstream integration contracts).
-6. **Scientific correctness** — `scientist` agent **only if**
-   `$META.science.required` is `true`.
-7. **Numerical stability / HPC readiness** — `compute-scientist`
-   agent **only if** `$META.science.required` is `true`. The agent
-   self-detects HPC relevance per file and silently skips files
-   where neither numerics nor HPC apply.
-8. **Visual design** — `web-design` agent. Always delegated; the
-   agent self-skips per file when no frontend code is present.
-9. **Security** — `security-reviewer` agent. Always delegated; the
-   agent self-skips per file when no attack surface is present.
-10. **Hygiene / continuous tech-debt** — `janitor` agent. Always
-    runs. Reads `.claude/notes/` for captured aesthetic rules and applies
-    them to the diff; emits hygiene findings plus suggestions for
-    new rules to capture via `/mol:note`.
+1. **Architecture** — `architect`.
+2. **Performance** — `optimizer`.
+3. **Documentation** — `documenter` (Mode A: audit).
+4. **User experience** — `undergrad` (user-facing API, onboarding, extension story).
+5. **Product / public-API** — `pm` (public-surface naming, breaking-change risk, downstream contracts).
+6. **Scientific correctness** — `scientist`, **only if** `$META.science.required: true`.
+7. **Numerical stability / HPC readiness** — `compute-scientist`, **only if** `$META.science.required: true`. Self-detects HPC relevance per file; silently skips.
+8. **Visual design** — `web-design`. Always delegated; self-skips per file with no frontend.
+9. **Security** — `security-reviewer`. Always delegated; self-skips per file with no attack surface.
+10. **Hygiene** — `janitor`. Always runs. Reads `.claude/notes/` for captured aesthetic rules; emits hygiene findings + suggestions for new rules via `/mol:note`.
 
-Each agent returns its findings in `<emoji> file:line — message`
-form (🚨 Critical / 🔴 High / 🟡 Medium / 🟢 Low).
+Findings format: `<emoji> file:line — message` (🚨 Critical / 🔴 High / 🟡 Medium / 🟢 Low).
 
-## Step 3 — Aggregate via the `reviewer` agent
+## Step 3 — Aggregate via `reviewer` agent
 
-Collect every agent's raw findings (verbatim, including any
-"N/A for this file" passes from `web-design` / `security-reviewer`,
-and any rule-capture suggestions from `janitor`). Pass the
-collected block to the `reviewer` agent with the dimensions
-covered, the file scope, and any acceptance-criteria slug used to
-focus the reviewers. The `reviewer` agent is responsible for:
+Collect every agent's raw findings verbatim (including "N/A for this file" passes from `web-design` / `security-reviewer`, and rule-capture suggestions from `janitor`). Pass to `reviewer` with dimensions covered, file scope, and any acceptance-slug. `reviewer` handles:
 
-- deduplication by `(file, line, category)`,
-- conflict resolution between contradicting agents,
-- the severity table,
-- listing 🚨 / 🔴 findings verbatim,
-- the verdict line (APPROVE / REQUEST CHANGES / BLOCK),
-- the rule-capture suggestions section (when `janitor` returned any).
+- deduplication by `(file, line, category)`
+- conflict resolution between contradicting agents
+- severity table
+- listing 🚨 / 🔴 findings verbatim
+- verdict line (APPROVE / REQUEST CHANGES / BLOCK)
+- rule-capture suggestions section (when `janitor` returned any)
 
-`/mol:review` does **not** re-aggregate the output — it renders
-exactly what the `reviewer` agent returns.
+`/mol:review` does **not** re-aggregate — renders exactly what `reviewer` returns.
 
 ## Step 4 — Runtime evaluator handoff (skill-level)
 
-This skill is **static-only**. If an `acceptance.md` is in scope
-(either passed explicitly as a slug, or found alongside a spec
-referenced in the diff), inspect its `criteria:` list:
+Static-only. If `acceptance.md` is in scope (slug passed, or found alongside diff-referenced spec), inspect its `criteria:`:
 
-- For every criterion with `type ∈ {ui_runtime, scientific,
-  performance, runtime}` **whose `status` is `pending` or
-  `failed`**, emit a *suggestion line* — never an invocation.
-  Skip criteria that are already `status: verified`; their
-  evaluator has already run and the verdict is on file.
-- Use the `evaluator_hint` field if set; otherwise look up the type
-  in the **Known evaluator plugins** table in
-  `plugins/mol/rules/evaluator-protocol.md`.
-- If no plugin is registered for that type, say so plainly:
-  *"ac-007 (performance): no evaluator plugin registered; verify
-  manually."*
+- For every criterion with `type ∈ {ui_runtime, scientific, performance, runtime}` **whose `status` is `pending` or `failed`**, emit a *suggestion line* — never an invocation. Skip `verified` (evaluator already ran).
+- Use `evaluator_hint` if set; else look up the type in **Known evaluator plugins** in `plugins/mol/rules/evaluator-protocol.md`.
+- No registered plugin for that type → say so plainly: *"ac-007 (performance): no evaluator plugin registered; verify manually."*
 
-Format the section as:
+Section format:
 
 ```
 ## Runtime evaluators (manual)
@@ -117,13 +80,10 @@ Format the section as:
 - ac-007 (performance) → no evaluator skill; verify by hand
 ```
 
-The user — or their external orchestrator — decides whether and
-when to run any of these. `/mol:review` does not auto-dispatch.
+User decides whether/when to run any. `/mol:review` does not auto-dispatch.
 
-If runtime evaluators are pending, append a note to the verdict
-line: *"static APPROVE; 3 runtime criteria still unverified."*
+Pending runtime evaluators → append note to verdict: *"static APPROVE; 3 runtime criteria still unverified."*
 
 ## Step 5 — One-line summary
 
-End with: files reviewed, axes covered, verdict, count of findings
-by severity, count of pending runtime criteria (if any).
+Files reviewed, axes covered, verdict, count of findings by severity, count of pending runtime criteria (if any).

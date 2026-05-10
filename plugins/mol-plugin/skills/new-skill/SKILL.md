@@ -1,91 +1,58 @@
 ---
-description: Scaffold a new skill inside one of the molcrafts plugins (mol, mol-agent, mol-plugin). Creates the skill directory and a complete, runnable SKILL.md authored end-to-end from the user's description — no TODO placeholders for the user to fill in afterwards. Writes are confined to (a) the new `plugins/<plugin>/skills/<name>/SKILL.md` and (b) appending one row to that plugin's `README.md` skills table; runs `/mol-plugin:check` at the end so the new skill is verified before the procedure exits.
+description: Scaffold a new skill inside one of the molcrafts plugins (mol, mol-agent, mol-plugin) with a complete runnable SKILL.md (no TODO placeholders) and an updated README row. Use to add a new top-level skill; runs `/mol-plugin:check` at the end to verify.
 argument-hint: "<plugin:skill-name> [<one-line description>]"
 ---
 
 # /mol-plugin:new-skill — Skill Scaffold
 
-Scaffold a new skill in this marketplace. Use when adding a verb
-that doesn't yet exist — e.g. `mol:bench`, `mol-agent:foo`,
-`mol-plugin:audit-templates`.
+Scaffold a new skill in this marketplace (e.g. `mol:bench`, `mol-agent:foo`, `mol-plugin:audit-templates`).
 
-This skill writes inside
-`plugins/<plugin>/skills/<skill-name>/` and appends exactly one
-row to `plugins/<plugin>/README.md`'s skills table. It never
-touches existing skills, `plugin.json`, or any other metadata.
+Write surface: `plugins/<plugin>/skills/<skill-name>/SKILL.md` + one appended row in `plugins/<plugin>/README.md`'s skills table. Never touches existing skills, `plugin.json`, or other metadata.
 
 ## Authorship contract
 
-The output of this skill is a **complete, runnable** SKILL.md —
-not a stub. Procedure steps are fully authored from the user's
-description (and any prior conversational context). `TODO`
-placeholders in the procedure body are forbidden: a stub leaves
-the user with the same design problem they came in with, just
-with a file path attached.
+Output must be a **complete, runnable** SKILL.md — not a stub. Procedure steps fully authored from the user's description. `TODO` placeholders forbidden.
 
-If the description is ambiguous enough that you cannot
-confidently author a complete procedure, **ask 1–2 targeted
-questions before writing**. Resolve the ambiguity in
-conversation, then author. Never resolve ambiguity by emitting
-a `TODO`.
+If the description is ambiguous, **ask 1–2 targeted questions before writing**. Never resolve ambiguity by emitting `TODO`.
 
 ## Procedure
 
 ### 1. Parse arguments
 
-Argument shape: `<plugin>:<skill-name> [<description>]`.
+Form: `<plugin>:<skill-name> [<description>]`.
 
 Validate:
 
-- `<plugin>` is one of `mol`, `mol-agent`, `mol-plugin` (or
-  another directory that already exists under `plugins/`).
+- `<plugin>` ∈ `mol`, `mol-agent`, `mol-plugin` (or another existing dir under `plugins/`).
 - `<skill-name>` is kebab-case, no spaces, not already taken.
 - Description, if given, is one sentence.
 
-If anything fails validation, report and stop.
+Fail validation → report and stop.
 
 ### 2. Read a sibling as a structural model
 
-Read one existing SKILL.md under the same plugin to match the
-local voice and frontmatter shape. Default models:
+Read one existing SKILL.md under the same plugin. Default models:
 
-- `mol` → `plugins/mol/skills/note/SKILL.md` (mid-complexity,
-  writing skill)
-- `mol-agent` → `plugins/mol-agent/skills/check/SKILL.md`
-  (read-only) or `plugins/mol-agent/skills/update/SKILL.md`
-  (writing)
+- `mol` → `plugins/mol/skills/note/SKILL.md`
+- `mol-agent` → `plugins/mol-agent/skills/check/SKILL.md` (read-only) or `plugins/mol-agent/skills/update/SKILL.md` (writing)
 - `mol-plugin` → `plugins/mol-plugin/skills/check/SKILL.md`
 
-Note the structure (not the content): frontmatter
-(`description` + `argument-hint`), an H1 with
-`/<plugin>:<skill>` heading, a one-paragraph purpose, numbered
-Procedure, optional Guardrails, optional Idempotency, Output
-format.
+Match structure (not content): frontmatter (`description` + `argument-hint`), H1 `/<plugin>:<skill>` heading, one-paragraph purpose, numbered Procedure, optional Guardrails, optional Idempotency, Output format.
 
 ### 3. Resolve the design before authoring
 
-From the user-supplied description plus any prior conversation,
-extract:
+Extract from description + prior conversation:
 
-- **Inputs.** What `$ARGUMENTS` parses as. What the skill reads
-  from CLAUDE.md / the project. What it ingests from siblings.
-- **Behavior.** The decisive verbs (probe? generate? gate?
-  delegate? orchestrate?). The branches (success path vs.
-  failure path; converge vs. discard; PROCEED vs. BLOCK).
-- **Outputs.** Files written, agents invoked, user-facing
-  output shape, the one-line F2 summary.
-- **Boundaries.** Read-only vs. writing; what the skill
-  refuses to touch; how it relates to neighboring skills
-  (`/mol:spec` vs `/mol:note`, `/mol:fix` vs `/mol:impl`,
-  etc.) so the catalog stays orthogonal.
+- **Inputs.** What `$ARGUMENTS` parses as. What it reads from CLAUDE.md / project / siblings.
+- **Behavior.** Decisive verbs (probe? generate? gate? delegate? orchestrate?). Branches (success/failure; converge/discard; PROCEED/BLOCK).
+- **Outputs.** Files written, agents invoked, user-facing shape, F2 one-line summary.
+- **Boundaries.** Read-only vs writing; what it refuses to touch; relation to neighbors (`/mol:spec` vs `/mol:note`, `/mol:fix` vs `/mol:impl`).
 
-If any of these four are unclear from the inputs you have,
-**ask 1–2 targeted questions** of the user now. Do not write a
-file with the gaps in it.
+Any unclear → **ask 1–2 targeted questions**. Never write with gaps.
 
 ### 4. Author the complete SKILL.md
 
-Produce the full body. Frontmatter:
+Frontmatter:
 
 ```markdown
 ---
@@ -94,8 +61,7 @@ argument-hint: "<concrete shape, per /mol-plugin:check Step 3 — e.g. <arg>, [a
 ---
 ```
 
-Body shape (numbered Procedure with concrete steps, not
-placeholders):
+Body shape (numbered Procedure, concrete steps, no placeholders):
 
 ```markdown
 # /<plugin>:<skill-name> — <Title>
@@ -124,84 +90,52 @@ end>
   design, not boilerplate>
 ```
 
-Two integrity rules while authoring:
+Integrity rules:
 
-- **Do not copy another skill's procedure verbatim.** Mirror
-  the headings and the frontmatter shape; *author* the
-  procedure for this skill's own purpose.
-- **Do not invent capabilities the user did not ask for.** A
-  scaffolder's job is to capture intent precisely, not to
-  expand it. If you find yourself adding a feature the user
-  didn't mention, stop and ask first.
+- **Do not copy another skill's procedure verbatim.** Mirror headings + frontmatter shape; *author* the procedure.
+- **Do not invent capabilities the user did not ask for.** Found yourself adding a feature unrequested → stop and ask.
 
 ### 5. Reach approval
 
-Show the user the path you would create and the **complete**
-body. Approval here is for redirection ("change step 3 to
-also do X", "drop the discard branch") — not a confirmation
-that a stub is acceptable. Do not write before approval.
+Show the path + **complete** body. Approval is for redirection ("change step 3 to also do X"), not stub acceptance. No write before approval.
 
 ### 6. Apply
 
-Write the file. Report
-`created plugins/<plugin>/skills/<skill-name>/SKILL.md`.
+Write the file. Report `created plugins/<plugin>/skills/<skill-name>/SKILL.md`.
 
 ### 7. Register in the plugin README
 
-Append one row to `plugins/<plugin>/README.md`'s skills table.
-Read the table first — copy its column shape exactly:
+Append one row to `plugins/<plugin>/README.md`'s skills table. Read the table first; copy column shape:
 
 ```
 | `/<plugin>:<skill-name>` | <one-sentence purpose, mirroring the frontmatter description's first sentence and matching the voice of neighboring rows> |
 ```
 
-Insert the new row at the bottom of the table, before the next
-non-table line. Do not edit any other part of the README — not
-the headline, not the workflow block, not the install section.
+Insert at bottom of the table, before the next non-table line. Edit nothing else in the README.
 
 ### 8. Run `/mol-plugin:check`
 
-Invoke `/mol-plugin:check <plugin>` to confirm the new skill
-passes structural validation (frontmatter, argument-hint shape,
-H1 match, cross-references, README consistency). If it reports
-errors, fix them before the procedure exits — the scaffolder is
-not done until check is green.
+Invoke `/mol-plugin:check <plugin>` to confirm structural validation. Errors → fix before exiting.
 
 ### 9. Suggest release follow-up
 
-If this skill should ship in the next marketplace release, tell
-the user to run `/mol-plugin:release patch` and `/mol:tag` when
-they're ready. Do not run those — release timing is the user's
-call.
+If this skill should ship next release, tell user to run `/mol-plugin:release patch` and `/mol:tag`. Don't run those — release timing is the user's call.
 
-End with a one-line summary (F2).
+End with one-line F2 summary.
 
 ## Guardrails
 
-- **No TODOs in the procedure body.** Reiterated at the
-  contract level; this is the rule that distinguishes
-  "scaffold" from "stub".
-- **Do not** create a skill in a plugin directory that doesn't
-  already exist; scaffolding a whole new plugin is a bigger
-  decision than this skill is sized for.
-- **Do not** copy another skill's procedure body. Frontmatter
-  shape and headings are fine to mirror; specific steps must
-  be authored.
-- **Do not** edit `plugin.json`, `marketplace.json`, or any
-  README section other than the skills table. The scaffolder's
-  write surface is exactly: the new SKILL.md and one appended
-  row in the plugin README's skills table — nothing else.
+- **No TODOs in the procedure body.** Distinguishes "scaffold" from "stub".
+- **Do not** create a skill in a non-existent plugin directory; new plugin = bigger decision.
+- **Do not** copy another skill's procedure body. Frontmatter shape and headings are fine to mirror.
+- **Do not** edit `plugin.json`, `marketplace.json`, or any README section other than the skills table.
 
 ## Output format
 
 - Validation result: pass or specific failure.
-- Resolved design (a 4-bullet recap of inputs / behavior /
-  outputs / boundaries) — proves the skill captured intent
-  before writing.
+- Resolved design (4-bullet recap of inputs / behavior / outputs / boundaries).
 - Plan: path + complete body preview.
-- Application: `created <path>` plus the one-line README row
-  diff.
-- `/mol-plugin:check` verdict for the new skill (pass / errors
-  fixed / errors remaining).
+- Application: `created <path>` + one-line README row diff.
+- `/mol-plugin:check` verdict.
 - Release follow-up prompt: one line, only if applicable.
 - Final summary (F2): one line.

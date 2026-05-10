@@ -1,124 +1,65 @@
 ---
-description: Backward-compat gatekeeper + hygiene cleanup for the current diff. **Mandatorily invoked by `/mol:impl` (Step 6.5)** before close-out — this is the single point where per-stage backward-compat is enforced (delete legacy at `experimental`, deprecation-shim at `stable`, migration-note flag at `beta`, untouched at `maintenance`). Also runnable standalone after `/mol:review`. Delegates findings to the `janitor` agent (read-only), then applies the minimal patch under a build/test gate. Behavior-preserving by contract; reverts any change that regresses the test suite. Pairs with `/mol:review`'s hygiene axis as the write-mode counterpart.
+description: Backward-compat gatekeeper + hygiene cleanup for the current diff, behavior-preserving under a test gate. Auto-invoked by `/mol:impl` Step 6.5; also runnable standalone after `/mol:review` to clean up dead code, magic numbers, and stage-appropriate legacy.
 argument-hint: "[path or list of files]"
 ---
 
 # /mol:simplify — Apply Hygiene Cleanup
 
-Read CLAUDE.md. Parse `mol_project:` (`$META`). Read `$META.stage`
-(default: `experimental`). Print `[mol] stage: <value>`.
+Read CLAUDE.md → parse `mol_project:` (`$META`). Read `$META.stage` (default `experimental`). Print `[mol] stage: <value>`.
 
-Stage gate per `plugins/mol/rules/stage-policy.md` — applied before
-the scope contract below:
+Write-mode counterpart to `janitor` (read-only). See `plugins/mol/rules/agent-design.md` § "Producer vs reviewer".
 
-- `maintenance` — only the most conservative subset: dead-import
-  removal, debug-residue deletion, and stale-`TODO` deletion *if
-  and only if* the marker references code already removed by an
-  earlier bug-fix commit. Naming-drift, magic-literal, and
-  constant-extraction findings are surfaced as `[skipped — stage:
-  maintenance]` and never applied.
-- `stable` — refuse to delete anything still referenced by a
-  `@deprecated` / `# DEPRECATED` marker (the deprecation must run
-  through one full major version before removal).
-- `beta` / `experimental` — full scope contract applies.
+## Stage gate (per `plugins/mol/rules/stage-policy.md`)
 
-Write-mode counterpart to the `janitor` review axis: `janitor`
-stays read-only and emits hygiene findings; this skill applies
-them under a build/test gate with regression revert. See
-`plugins/mol/rules/agent-design.md` § "Producer vs reviewer".
+- `maintenance` — only: dead-import removal, debug-residue deletion, stale-`TODO` deletion *iff* the marker references already-removed code. Naming-drift / magic-literal / constant-extraction → `[skipped — stage: maintenance]`.
+- `stable` — refuse to delete anything still referenced by `@deprecated` / `# DEPRECATED` (deprecation must run one full major version first).
+- `beta` / `experimental` — full scope contract.
 
 ## Scope contract
 
-`/mol:simplify` only applies changes that are **provably
-behavior-preserving**:
+**Apply** (provably behavior-preserving):
 
-- delete an unused import / unreachable branch / unused local
+- delete unused import / unreachable branch / unused local
 - delete commented-out code
-- delete a debug `print` / `console.log` / `dbg!`
-- inline-replace a magic literal with a named constant **already
-  defined** in the file (do not introduce new constants without
-  user direction)
-- rename a local symbol to the project's captured naming rule
-  (e.g. `natoms` → `n_atoms`) — **only** when the name is local
-  to one file and grep confirms no external caller
-- whitespace / import-order fixes the formatter should have
-  caught
-- run the **language-canonical formatter in fix mode** on the
-  touched files (`ruff format` for Python, `biome format` /
-  `biome check --write` for TypeScript, `cargo fmt` for Rust;
-  see `plugins/mol/agents/janitor.md` § *Language-canonical
-  toolchains* for the full table). Auto-fixable lint rules from
-  the same toolchain (`ruff check --fix`, `biome lint --apply`,
-  `cargo clippy --fix --allow-dirty`) are in scope only when
-  the rule's fix is mechanical and behavior-preserving — the
-  Step 5 test gate is the safety net
-- delete a stale `TODO` / `FIXME` whose reference is dead code
+- delete debug `print` / `console.log` / `dbg!`
+- inline a magic literal with a named constant **already defined in the file** (no new constants)
+- rename a local symbol per captured naming rule (e.g. `natoms` → `n_atoms`) **only** when local to one file and grep confirms no external caller
+- whitespace / import-order fixes the formatter missed
+- run language-canonical formatter in fix mode on touched files: `ruff format` (Python), `biome format` / `biome check --write` (TS), `cargo fmt` (Rust). Auto-fix lints (`ruff check --fix`, `biome lint --apply`, `cargo clippy --fix --allow-dirty`) in scope only when mechanical and behavior-preserving — Step 5 test gate is the safety net. See `plugins/mol/agents/janitor.md` § *Language-canonical toolchains*.
+- delete stale `TODO` / `FIXME` whose reference is dead code
 
-`/mol:simplify` **refuses** to apply, and surfaces as
-"manual fix"  instead:
+**Refuse** (surface as "manual"):
 
-- copy-paste duplication extraction (cross-file judgment — that's
-  `/mol:refactor`)
-- function-too-long splits (`/mol:refactor`)
-- public-API renames (cross-file caller updates — `/mol:refactor`
-  with `pm` agent pre-check)
-- any finding labeled `→ defer to <agent>` by `janitor`
-- any finding without a captured rule citation (the
-  agent-emitted "suggested rule capture" — those go through
-  `/mol:note` first, then a future `/mol:simplify` run picks
-  them up)
-
-This is the safety contract. If a finding doesn't fit the
-"provably behavior-preserving" bar, it is the user's call (or
-`/mol:fix` / `/mol:refactor`'s) — not this skill's.
+- copy-paste duplication extraction → `/mol:refactor`
+- function-too-long splits → `/mol:refactor`
+- public-API renames → `/mol:refactor` with `pm` agent pre-check
+- any finding `→ defer to <agent>` from `janitor`
+- any finding without a captured rule citation → user runs `/mol:note` first; future run picks it up
 
 ## Procedure
 
 ### 1. Determine scope
 
-- If `$ARGUMENTS` is given, treat it as the path / file list.
-- Else use `git diff --name-only` for recent uncommitted /
-  unpushed changes.
-- If the working tree has unrelated uncommitted changes,
-  **stop** and tell the user to commit or stash first. This skill
-  needs a clean diff to revert cleanly on regression.
+- `$ARGUMENTS` if given, else `git diff --name-only`.
+- If the working tree has unrelated uncommitted changes → **stop**, ask user to commit/stash. This skill needs a clean diff to revert cleanly on regression.
 
-### 2. Snapshot the test gate
+### 2. Snapshot test gate
 
-Before any change:
-
-```
-$META.build.check
-$META.build.test
-```
-
-Record the passing test list and any pre-existing failures. The
-revert criterion in Step 5 is "no new failures vs. this
-snapshot," not "all tests pass" — pre-existing red tests are
-out of scope.
-
-If `$META.build.test` is already failing in unrelated ways, ask
-the user whether to proceed with that baseline.
+Run `$META.build.check` and `$META.build.test`. Record passing list + pre-existing failures. Revert criterion is "no new failures vs snapshot," not "all green." If `$META.build.test` is already failing in unrelated ways, ask user before proceeding.
 
 ### 3. Delegate to `janitor`
 
-Invoke the `janitor` agent on the scope from Step 1. Capture its
-output verbatim — findings + rule-capture suggestions + deferred-
-to-other-agent items.
+Invoke `janitor` agent on Step 1 scope. Capture findings + rule-capture suggestions + deferred-to-other-agent items verbatim.
 
-### 4. Triage findings against the scope contract
+### 4. Triage findings
 
-For each finding the agent returned:
+For each finding:
 
-- If it matches the **scope contract** (apply list above) →
-  candidate for batch apply.
-- If it matches the **refuses list** → label *"manual: route to
-  `/mol:refactor` (or `/mol:fix`)"* and skip.
-- If `janitor` left a `Fix:` line, propose that exact patch. If
-  the fix is multi-line or requires file-level reorganization,
-  treat as out of contract and skip.
+- matches **apply** list → candidate for batch apply
+- matches **refuse** list → label `manual: route to /mol:refactor (or /mol:fix)`, skip
+- if `janitor` left a `Fix:` line → propose that exact patch. Multi-line / file-level reorg → out of contract, skip.
 
-Show the user the triage table:
+Show triage table:
 
 ```
 [apply]    src/foo.py:42  unused import os               → delete line
@@ -129,42 +70,21 @@ Show the user the triage table:
 [skipped]  src/qux.py:9   naming drift (no captured rule)→ /mol:note first, then re-run
 ```
 
-Wait for explicit user approval. The user may de-select any
-`[apply]` row.
+Wait for explicit user approval. User may de-select any `[apply]` row.
 
 ### 5. Apply, verify, revert on regression
 
-For each approved row:
+1. Apply minimal patch per finding (one Edit each when possible).
+2. After **whole batch**, run `$META.build.test`.
+3. If any Step-2-green test is now red → **revert entire batch** (`git checkout -- <files>`), tell user which finding was the suspected trigger. (Bisect is user's call.)
+4. If green: run `$META.build.check`, then **run the language-canonical trio explicitly** even when `build.check` skips one (per `plugins/mol/agents/janitor.md` § *Language-canonical toolchains*):
+   - python: `ruff check`, `ruff format --check`, `ty` (or `mypy` if unmigrated)
+   - typescript: `biome check`, `tsc --noEmit`
+   - rust: `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo check`
 
-1. Apply the minimal patch (a single Edit per finding when
-   possible).
-2. After the **whole batch** is applied, run
-   `$META.build.test`.
-3. If any test that was green in the Step 2 snapshot is now red,
-   **revert the entire batch** (`git checkout -- <files>`) and
-   tell the user which finding was the suspected trigger
-   (re-applying findings one-by-one to bisect is the user's
-   call, not automatic).
-4. If everything stays green, run `$META.build.check` to confirm
-   format / lint also pass, **then run the language-canonical
-   toolchain trio explicitly** even when `build.check` does not
-   include all three (per `plugins/mol/agents/janitor.md`
-   § *Language-canonical toolchains*):
+   Non-zero from any = test regression: revert batch, surface failing tool. At `maintenance` the trio is verify-only (no fix-mode formatter, no `--fix`).
 
-   - `python` — `ruff check`, `ruff format --check`, `ty`
-     (or `mypy` if the project hasn't migrated yet)
-   - `typescript` — `biome check`, `tsc --noEmit`
-   - `rust` — `cargo fmt --check`, `cargo clippy -- -D warnings`,
-     `cargo check`
-
-   A non-zero exit from any of these is treated like a test
-   regression — revert the entire batch and surface the failing
-   tool. Stage gate still applies: at `maintenance` the trio is
-   verify-only (no fix-mode formatter run, no `--fix` lint).
-
-Never partial-apply. The contract is "this batch was
-behavior-preserving" — a green-after-revert state is the only
-acceptable failure mode.
+Never partial-apply. Green-after-revert is the only acceptable failure mode.
 
 ### 6. Report
 
@@ -180,42 +100,22 @@ Suggested rule captures (S):
   - <suggestion> → /mol:note
 ```
 
-If `janitor` emitted rule-capture suggestions, surface them in
-their own section. Don't auto-route — the user decides which
-become rules.
+Surface rule-capture suggestions separately — user decides which become rules.
 
-End with a one-line summary: files touched, fixes applied,
-manual handoffs queued, tests still green.
+End with a one-line summary: files touched, fixes applied, manual handoffs queued, tests still green.
 
 ## Guardrails
 
-- **Behavior-preserving only.** Anything that could change
-  runtime behavior, public API, or test outcomes belongs in
-  `/mol:fix` or `/mol:refactor`.
-- **Whole-batch atomicity.** A test regression reverts the
-  entire batch. Never leave the tree in a half-cleaned state.
-- **No new abstractions.** Do not introduce new helpers,
-  constants, or modules. Only delete or rename.
-- **No CLAUDE.md / `.claude/notes/` writes.** Rule capture is
-  `/mol:note`'s job.
+- **Behavior-preserving only.** Runtime/API/test-outcome changes → `/mol:fix` or `/mol:refactor`.
+- **Whole-batch atomicity.** Regression reverts entire batch — no half-cleaned tree.
+- **No new abstractions.** Only delete or rename. No new helpers / constants / modules.
+- **No CLAUDE.md / `.claude/notes/` writes.** Rule capture is `/mol:note`'s job.
 
 ## Idempotency
 
-Running `/mol:simplify` twice in a row on the same scope: the
-second run finds zero `[apply]` candidates (everything from the
-first run is gone) and either reports zero changes or surfaces
-manual / rule-capture handoffs that the first run also flagged.
+Second run on same scope finds zero `[apply]` candidates; reports zero changes or re-surfaces the first run's manual / rule-capture handoffs.
 
 ## When to invoke
 
-- **Mandatory from `/mol:impl`** — `/mol:impl` Step 6.5 always
-  invokes this skill on the impl diff before its close-out
-  commit. This is the single point where per-stage backward-
-  compat is enforced (legacy delete vs shim vs leave alone).
-  The user does not opt out; they may, however, de-select
-  individual `[apply]` rows in the Step 4 triage table.
-- **Standalone (explicit)** — after `/mol:review` flagged
-  hygiene findings, or as a periodic cleanup pass on the
-  current uncommitted diff. The user-side rule "a bug fix
-  doesn't need surrounding cleanup" makes cleanup outside the
-  impl pipeline a separate, user-driven operation.
+- **Mandatory from `/mol:impl`** — Step 6.5 invokes this on the impl diff before close-out commit. Single point where per-stage backward-compat is enforced (legacy delete vs shim vs leave alone). User cannot opt out, but may de-select `[apply]` rows in Step 4.
+- **Standalone** — after `/mol:review` flagged hygiene findings, or as periodic cleanup on the current uncommitted diff.

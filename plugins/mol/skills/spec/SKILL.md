@@ -1,227 +1,125 @@
 ---
-description: Convert a natural-language requirement into a structured technical spec under .claude/specs/, with a checkbox-tracked Tasks section, then negotiate the binding `<slug>.acceptance.md` contract that defines "done". The bulk drafting + self-validation is delegated to the `spec-writer` agent (subagent context, not parent); this skill orchestrates conflict detection, user approval, and persistence. Detects conflicts with existing specs and updates the old spec body + regenerates acceptance criteria when superseded or refined. Writes specs and acceptance files (and amends old ones during conflict resolution). Supports Chinese and English.
+description: Convert a natural-language requirement into a structured spec under `.claude/specs/` plus a binding `<slug>.acceptance.md` contract that defines "done". Use to start any non-trivial feature; detects conflicts with existing specs and supports Chinese and English.
 argument-hint: "<feature description>"
 ---
 
 # /mol:spec — Specification Generator
 
-Read CLAUDE.md. Parse `mol_project:` (`$META`). If missing, emit the
-adoption hint and stop.
+Read CLAUDE.md → parse `mol_project:` (`$META`); else emit adoption hint and stop.
 
-Resolve the specs path:
-
-1. If `$META.specs_path` is set, use it (canonical default
-   `.claude/specs/`).
-2. Otherwise, default to `.claude/specs/`.
-
-Create the directory if missing.
+Resolve specs path: `$META.specs_path` if set (canonical default `.claude/specs/`), else `.claude/specs/`. Create dir if missing.
 
 ## What this skill produces
 
 Two files per spec, written together:
 
-- `<slug>.md` — the design (Summary / Design / Files / Tasks /
-  Testing / Out of scope).
-- `<slug>.acceptance.md` — the binding "done" contract per
-  `plugins/mol/rules/evaluator-protocol.md`; `/mol:impl` and any
-  runtime evaluator (e.g. `/mol:web`) verify against it.
+- `<slug>.md` — the design (Summary / Design / Files / Tasks / Testing / Out of scope).
+- `<slug>.acceptance.md` — binding "done" contract per `plugins/mol/rules/evaluator-protocol.md`; `/mol:impl` and runtime evaluators (`/mol:web` etc.) verify against it.
 
-`/mol:impl` refuses to start without both files in place. The pair
-is alive — `/mol:impl` ticks the Tasks checkboxes off as work
-progresses and **deletes** both files when every task is complete.
+`/mol:impl` refuses to start without both. `/mol:impl` ticks Tasks and **deletes** both files when complete.
 
-Where specs do **not** belong: `docs/` (public documentation —
-never), `.claude/notes/` (passive notes and decisions — specs are active
-runtime tasks).
+Specs do **not** belong in `docs/` (public docs) or `.claude/notes/` (passive notes).
 
 ## Procedure
 
 ### 1. Parse the request
 
-What capability is being added? Which layer / package / crate is
-affected? Derive the kebab-case slug. State this in one sentence
-before going further.
+What capability? Which layer/package/crate? Derive kebab-case slug. State in one sentence.
 
 ### 2. Search domain basis (if applicable)
 
-If physics is involved AND `$META.science.required` is `true`,
-delegate to the `scientist` agent for equations, references, and
-validation targets. Capture the scientist's output verbatim — it
-becomes input to `spec-writer` in Step 5.
+Physics involved AND `$META.science.required: true` → delegate to `scientist` agent for equations / references / validation targets. Capture verbatim — feeds `spec-writer` in Step 5.
 
 ### 3. Conflict check (MANDATORY before any write)
 
-Read every existing spec under `$META.specs_path`. For the new
-request, classify against each existing spec:
+Read every existing spec under `$META.specs_path`. Classify the new request:
 
-- **Duplicate.** The existing spec already covers this scope →
-  tell the user, don't add a sibling.
+- **Duplicate** — existing spec covers this scope → tell user, don't add sibling.
+- **Supersede / refine** — new request changes/expands/fixes an existing spec → **update old spec in place**, no sibling. Read old body in full; pass to `spec-writer`.
+- **Independent** — different scope → safe to create.
 
-- **Supersede / refine.** The new request changes, expands, or
-  fixes the design of an existing spec → **update the old spec
-  in place**, do not create a sibling. Read the old spec body
-  in full; you will pass it to `spec-writer` so it can reconcile
-  the Tasks list.
-
-- **Independent.** Different scope from any existing spec → safe
-  to create a new file.
-
-State the classification before continuing. Never create a
-sibling spec for a supersede / refine. If you find yourself
-wanting to create `morse-bond-v2.md` next to `morse-bond.md`,
-that's the wrong move — feed both into `spec-writer` with
-`conflict_decision: supersede:morse-bond`.
+State classification before continuing. Never sibling for supersede/refine. (`morse-bond-v2.md` next to `morse-bond.md` is the wrong move — feed both into `spec-writer` with `conflict_decision: supersede:morse-bond`.)
 
 ### 4. Scan interaction points
 
-Glob the project root for files relevant to `$META.language`.
-Identify the closest existing pattern. Flag any new public API,
-data-model change, or cross-layer dependency. Capture as
-structured input for `spec-writer`.
+Glob project root for files relevant to `$META.language`. Identify closest existing pattern. Flag any new public API, data-model change, cross-layer dependency. Capture as structured input for `spec-writer`.
 
 ### 4.5. Consult `librarian` (planning-time placement & reuse)
 
-Before handing the request to `spec-writer`, ask the `librarian`
-agent to look at what's already in the codebase (via the project
-blueprint at `.claude/notes/architecture.md`) and answer two questions:
-*"is this already there?"* and *"where does it canonically belong?"*
+Before `spec-writer`, ask `librarian` (via `.claude/notes/architecture.md`): *"is this already there?"* and *"where does it canonically belong?"*
 
-Invoke `librarian` with a structured prompt:
+Invoke `librarian` with:
 
-- `request` — the user's requirement (preserve language).
-- `scope_layer` — from Step 1.
+- `request` — user's requirement (preserve language)
+- `scope_layer` — from Step 1
 
-`librarian` returns one of two shapes:
+Returns one of two shapes:
 
-- **Shape A — fresh blueprint, full report** with four fixed
-  sections: `Reuse candidates`, `Recommended placement`,
-  `Closest pattern`, `Confidence`.
-- **Shape B — `stale: true`** with a one-line reason.
+- **Shape A** — fresh blueprint, full report: `Reuse candidates`, `Recommended placement`, `Closest pattern`, `Confidence`.
+- **Shape B** — `stale: true` + one-line reason.
 
 #### Stale-handling branch (skill orchestrates; O2 preserved)
 
-If `librarian` returned `stale: true`, **the skill** — not the
-agent — owns the recovery routing. `librarian` MUST NOT invoke
-`architect`, and `architect` MUST NOT invoke `librarian`. The
-chain is:
+If `stale: true`, **skill** (not agent) owns recovery routing. `librarian` MUST NOT invoke `architect`; `architect` MUST NOT invoke `librarian`. Chain:
 
-1. this skill invokes `architect` in `mode: inventory` (the
-   architect inventory mode) to draft a fresh catalog;
-2. this skill invokes `/mol:map` (which gates on the user-confirm
-   step) to write the refreshed `.claude/notes/architecture.md`;
-3. this skill re-consults `librarian` (the librarian re-consult)
-   and now expects Shape A.
+1. skill invokes `architect` in `mode: inventory` to draft fresh catalog;
+2. skill invokes `/mol:map` (gates on user-confirm) to write refreshed `.claude/notes/architecture.md`;
+3. skill re-consults `librarian`; expect Shape A.
 
-If at any point the user defers the `/mol:map` write gate, fall
-back to drafting `spec-writer` input without a librarian report
-(noting "librarian consult skipped — blueprint refresh deferred"
-in the Step 6 surfacing).
+If user defers `/mol:map` write gate → draft `spec-writer` input without librarian report (note "librarian consult skipped — blueprint refresh deferred" at Step 6).
 
-Capture the final librarian report verbatim — it becomes a new
-input field `librarian_report` to `spec-writer` in Step 5.
+Capture final librarian report verbatim — becomes `librarian_report` input to `spec-writer`.
 
 ### 5. Delegate drafting to `spec-writer`
 
-Invoke the `spec-writer` agent with a structured prompt
-containing:
+Invoke `spec-writer` with structured prompt:
 
-- `request` — the user's requirement (preserve language).
-- `scope_layer` — from Step 1.
-- `scientist_output` — from Step 2 (or empty).
-- `conflict_decision` — `independent` or `supersede:<slug>`
-  (with the old spec body inlined when supersede).
-- `interaction_points` — from Step 4.
-- `slug` — from Step 1.
+- `request` — user's requirement (preserve language)
+- `scope_layer` — Step 1
+- `scientist_output` — Step 2 (or empty)
+- `conflict_decision` — `independent` or `supersede:<slug>` (with old body inlined)
+- `interaction_points` — Step 4
+- `slug` — Step 1
 
-The agent drafts the spec body (Summary / Domain basis / Design
-/ Files / Tasks / Testing strategy / Out of scope), self-validates
-against the quality checklist (sections / atomic tasks /
-RED-before-GREEN / Files↔Tasks cross-reference), and proposes
-acceptance criteria. It returns two markdown blocks plus a
-status line; **it does not write to disk**.
+Agent drafts spec body (Summary / Domain basis / Design / Files / Tasks / Testing strategy / Out of scope), self-validates against quality checklist (sections / atomic tasks / RED-before-GREEN / Files↔Tasks cross-reference), proposes acceptance criteria. Returns two markdown blocks + status line; **does not write to disk**.
 
-Branch on the agent's `Status:`:
+Branch on `Status:`:
 
 - `Status: ok` — proceed to Step 6.
-- `Status: blocked` — surface the failed items to the user with
-  the question: *"I cannot satisfy <items>; do you want to
-  relax X, or refine the request?"* Stop until the user
-  responds; on response, re-invoke `spec-writer` from Step 5.
-- `Status: split-needed` — **do not prompt the user.** The
-  large-spec split rule (`plugins/mol/rules/large-spec-split.md`)
-  has already decided. Read the proposed-cut chain from the
-  agent's output, then **re-invoke `spec-writer` once per
-  sub-slug in chain order** with:
+- `Status: blocked` — surface failed items: *"I cannot satisfy <items>; do you want to relax X, or refine the request?"* Stop until user responds; on response, re-invoke from Step 5.
+- `Status: split-needed` — **do not prompt user.** The large-spec split rule (`plugins/mol/rules/large-spec-split.md`) decided. Read proposed-cut chain, then **re-invoke `spec-writer` once per sub-slug in chain order** with:
+    - `slug` = sub-slug (`<base>-NN-<phase>`)
+    - `request` = sub-slug's scope line from cut
+    - `scope_layer` = single layer that sub-spec touches
+    - `interaction_points` = inherited + explicit "depends on: <earlier sub-slugs>" line
+    - `conflict_decision` = `independent` (sub-specs are siblings, not supersedes; original parent slug not written)
 
-    - `slug` = the sub-slug (`<base>-NN-<phase>`),
-    - `request` = the sub-slug's scope line from the cut,
-    - `scope_layer` = the single layer that sub-spec touches,
-    - `interaction_points` = inherited from the parent invocation
-      plus an explicit "depends on: <earlier sub-slugs in chain>"
-      line so the agent draws the dependency forward,
-    - `conflict_decision` = `independent` (sub-specs are siblings,
-      not supersedes; the original parent slug is not written).
+  Each sub-invocation must return `Status: ok` (or `Status: blocked` — surface and stop). Collect all sub-spec bodies + acceptance blocks; jump to Step 6 with **full chain**, not parent.
 
-  Each sub-invocation must itself return `Status: ok` (or
-  `Status: blocked` — surface and stop). Collect all sub-spec
-  bodies + acceptance blocks; jump to Step 6 with the **full
-  chain**, not the original parent.
-
-For supersede flows the agent additionally returns a `Diff vs.
-previous spec` block; you will surface that diff in Step 6 so
-the user sees what was unchecked, removed, and added before
-approving.
+For supersede flows, agent additionally returns `Diff vs. previous spec` block; surface in Step 6.
 
 ### 6. Show, confirm, persist
 
-For a single-spec result, show the user **both** files (spec
-body + acceptance) in the same turn, exactly as `spec-writer`
-returned them.
+Single-spec result: show **both** files (spec body + acceptance) in same turn, exactly as `spec-writer` returned them.
 
-For a chained result from the auto-split branch (multiple
-spec/acceptance pairs), show the user the **chain summary
-first** — a numbered list of `<sub-slug>` + one-line scope, in
-chain order — followed by each pair in sequence. Call out
-that the chain was produced by the large-spec split rule (no
-user prompt was issued); the user can still amend or delete
-sub-specs after persistence.
+Chained result: show **chain summary first** — numbered `<sub-slug>` + one-line scope, in chain order — then each pair in sequence. Call out the chain was produced by the large-spec split rule (no user prompt was issued); user can amend or delete sub-specs after persistence.
 
 Call out:
 
-- **librarian's reuse candidates and recommended placement** from
-  Step 4.5 (surface this *first*, before any other callout — the
-  user must see and acknowledge what was already in the codebase
-  before approving a draft that may have ignored it),
-- the criteria derived from Testing strategy (easy to miss),
-- spec items deliberately not turned into criteria, with a
-  one-line reason,
-- (supersede) the diff against the previous spec.
+- **librarian's reuse candidates and recommended placement** from Step 4.5 (surface *first* — user must see what was already in the codebase before approving)
+- criteria derived from Testing strategy (easy to miss)
+- spec items deliberately not turned into criteria, with one-line reason
+- (supersede) the diff against previous spec
 
-Wait for explicit approval. Edits — adding/removing/retyping
-criteria, tightening `pass_when`, moving items to
-`out_of_scope` — are acceptable. If the user requests changes,
-either:
+Wait for explicit approval. Edits acceptable (rename criterion id, sharpen pass_when, move to `out_of_scope`):
 
-- apply them inline if they're surface tweaks (rename a
-  criterion id, sharpen a pass_when), or
-- if they materially change the design (new task, removed
-  file, retyped criterion), re-invoke `spec-writer` with the
-  amended request.
+- surface tweaks → apply inline
+- material design changes (new task, removed file, retyped criterion) → re-invoke `spec-writer` with amended request
 
 After approval:
 
-1. Write `{$META.specs_path}{slug}.md` with the spec body the
-   agent returned. For supersede, this overwrites the old
-   file; bump `revised: YYYY-MM-DD` in the frontmatter (do
-   not change `created`). For a chained result, write **one
-   `<sub-slug>.md` per sub-spec** in chain order; the parent
-   slug is not written as its own file.
-
-2. Write `{$META.specs_path}{slug}.acceptance.md` per the
-   schema in `plugins/mol/rules/evaluator-protocol.md`. For a
-   chained result, write one acceptance file per sub-spec
-   alongside its body.
-
+1. Write `{$META.specs_path}{slug}.md`. For supersede, overwrites old file; bump `revised: YYYY-MM-DD` (don't change `created`). For chain, write **one `<sub-slug>.md` per sub-spec** in chain order; parent slug not written.
+2. Write `{$META.specs_path}{slug}.acceptance.md` per `plugins/mol/rules/evaluator-protocol.md`. Chain → one acceptance per sub-spec.
 3. Update `{$META.specs_path}INDEX.md`:
 
    ```markdown
@@ -230,78 +128,35 @@ After approval:
    - [{slug}]({slug}.md) — <one-line summary> [approved]
    ```
 
-   On supersede/refine, update the entry in place. When
-   `/mol:impl` finishes a spec, it removes the entry. For a
-   chained result, add **one entry per sub-spec** in chain
-   order (no parent entry).
+   Supersede/refine → update entry in place. `/mol:impl` removes entry on finish. Chain → **one entry per sub-spec** in chain order (no parent entry).
 
-If the user defers approval (*"let me think about it"*),
-write the spec with `status: draft` and skip writing
-`acceptance.md`. Re-invoking `/mol:spec` on the same slug
-resumes from Step 5 (which will re-invoke `spec-writer`).
+If user defers approval (*"let me think about it"*), write spec with `status: draft` and skip `acceptance.md`. Re-invoking `/mol:spec` on same slug resumes from Step 5.
 
 ### 7. Report
 
-Print:
-
-- spec path + acceptance path (per sub-spec for a chain)
+- spec path + acceptance path (per sub-spec for chain)
 - task count (e.g. *"7 tasks; 0 completed"*) per spec
-- criteria count, broken down by `type`, per spec
-- one-line note flagging which criteria need a runtime
-  evaluator (any `type` other than `code` / `runtime`). Example:
-  *"3 ui_runtime criteria — invoke `/mol:web <slug>` after
-  `/mol:impl` finishes; `/mol:impl` will park the spec at
-  `status: code-complete` until those criteria flip to
-  `verified`."*
-- for supersede flows: a short diff (what changed, what was
-  unchecked, what was removed, what was added)
-- for chain flows: the next-step pointer
-  *"start with `/mol:impl <base>-01-<phase>`; `/mol:impl`
-  will auto-create `feat/<base>` and stage-commit each
-  sub-spec on completion."*
+- criteria count by `type`, per spec
+- one-line note flagging criteria needing runtime evaluator (any `type` other than `code` / `runtime`). Example: *"3 ui_runtime criteria — invoke `/mol:web <slug>` after `/mol:impl`; `/mol:impl` parks at `status: code-complete` until those flip to `verified`."*
+- supersede flows: short diff (changed / unchecked / removed / added)
+- chain flows: next-step pointer *"start with `/mol:impl <base>-01-<phase>`; auto-creates `feat/<base>` and stage-commits each sub-spec on completion."*
 
-End with a one-line user-facing summary.
+End with one-line user-facing summary.
 
 ## Lifecycle
 
-- `draft` — written but the user deferred approval; acceptance.md
-  not yet written. Re-run `/mol:spec <slug>` to resume.
-- `approved` — user signed off both spec body and `<slug>.acceptance.md`.
-  This is the ready-to-impl state. Every criterion in
-  acceptance.md starts at `status: pending`.
-- `in-progress` — `/mol:impl` started; spec Tasks being ticked
-  off and acceptance criteria being flipped to `verified` /
-  `failed` as their tests run.
-- `code-complete` — `/mol:impl` Step 7 completed code work and
-  every `code` / `runtime` criterion is `verified`, but at least
-  one runtime-evaluator-typed criterion (`ui_runtime` /
-  `scientific` / `performance` / `docs`) is still `pending`. The
-  spec and acceptance file stay on disk so `/mol:web` (etc.)
-  can still read them. The user runs the relevant evaluator;
-  each evaluator updates the criterion's `status` per
-  `plugins/mol/rules/evaluator-protocol.md`. Re-run
-  `/mol:impl <slug>` to advance the spec to `done` once all
-  criteria are `verified`.
-- `done` — every criterion is `verified` and tests are green.
-  `/mol:impl` deletes the spec file, the INDEX entry, and
-  `<slug>.acceptance.md` on its way out.
+- `draft` — written but user deferred approval; acceptance.md not yet written. Re-run `/mol:spec <slug>` to resume.
+- `approved` — user signed off both files. Ready to impl. Every criterion starts at `status: pending`.
+- `in-progress` — `/mol:impl` started; Tasks ticked, criteria flipped to `verified` / `failed` as tests run.
+- `code-complete` — Step 7 finished code work; every `code` / `runtime` criterion is `verified`, but ≥1 runtime-evaluator-typed criterion (`ui_runtime` / `scientific` / `performance` / `docs`) still `pending`. Files stay so evaluators can read them. User runs evaluator; each updates criterion `status` per `plugins/mol/rules/evaluator-protocol.md`. Re-run `/mol:impl <slug>` to advance to `done`.
+- `done` — every criterion `verified` and tests green. `/mol:impl` deletes spec, INDEX entry, acceptance.md.
 
 ## Why drafting is delegated
 
-Drafting (prose, file list, atomic tasks, self-validation,
-acceptance criteria) is one long generative pass; running it in
-`spec-writer`'s subagent context keeps the parent free for the
-ensuing conversation. User-interaction parts (triage, approval,
-persistence, INDEX) stay here — they need dialogue and atomic
-writes.
+Drafting is one long generative pass; running in `spec-writer`'s subagent context keeps parent free for the conversation. User-interaction parts (triage, approval, persistence, INDEX) stay here.
 
-See `plugins/mol/rules/agent-design.md` for the full producer /
-reviewer / drafter classification.
+See `plugins/mol/rules/agent-design.md` for full producer / reviewer / drafter classification.
 
 ## Bilingual
 
-If the user argument is in Chinese, `spec-writer` produces the
-spec body in Chinese; the frontmatter keys, INDEX entry, and
-the verb-prefix of each Tasks line stay in English so
-`/mol:impl` and downstream tooling parse the checklist
-deterministically.
+If user argument is Chinese, `spec-writer` produces spec body in Chinese; frontmatter keys, INDEX entry, and verb-prefix of each Tasks line stay English so `/mol:impl` and downstream tooling parse deterministically.

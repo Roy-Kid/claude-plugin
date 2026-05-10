@@ -5,57 +5,41 @@ argument-hint: "[<message>]"
 
 # /mol:commit — Gated Local Commit
 
-This skill is a **write** skill: it stages files and creates a git
-commit. It is not a remote operation — pushing is `/mol:push`'s job.
+Write skill: stages files + creates a commit. Pushing is `/mol:push`.
 
-The contract is "no commit without a passing pre-commit gate." The
-gate itself lives in `/mol:ship commit` so commit and CI-parity stay
-factored apart.
+Contract: no commit without a passing pre-commit gate. Gate lives in `/mol:ship commit`.
 
 ## Procedure
 
 ### 1. Sanity check
 
-If the working tree is clean (`git status --porcelain` empty), stop
-and tell the user there is nothing to commit.
+`git status --porcelain` empty → stop, report nothing to commit.
 
 ### 2. Decide what to stage
 
-- If anything is **already staged**, treat that as the commit's
-  contents. Do not auto-add unstaged files; the user has already
-  curated the staging area.
-- If nothing is staged but there are unstaged changes, list them
-  and ask the user whether to `git add` them all or pick a subset.
-  Never run `git add -A` or `git add .` silently — that risks
-  picking up `.env`, credentials, or large binaries.
+- Already staged → treat as commit contents; do not auto-add unstaged.
+- Nothing staged + unstaged changes exist → list them, ask user to `git add` all or pick subset. Never `git add -A` / `git add .` silently (risks `.env`, credentials, large binaries).
 
-Stage by exact paths only. Never pass `-A` / `.` / globs.
+Stage by exact paths only. Never `-A` / `.` / globs.
 
 ### 3. Run the pre-commit gate
 
-Invoke `/mol:ship commit`. If the verdict is **BLOCK**, stop and
-relay the top blocker plus the `/mol:fix` (or `/mol:impl` /
-`/mol:refactor`) action that `/mol:ship` recommended. Do not
-commit.
+Invoke `/mol:ship commit`.
 
-If the verdict is **PROCEED**, continue.
+- **BLOCK** → stop, relay top blocker + recommended `/mol:fix` (or `/mol:impl` / `/mol:refactor`) action. Do not commit.
+- **PROCEED** → continue.
 
 ### 4. Resolve the commit message
 
-If `$ARGUMENTS` is non-empty, treat it as the commit subject.
+`$ARGUMENTS` non-empty → use as commit subject.
 
-Otherwise, generate a conventional-commit message from the staged
-diff:
+Else generate conventional-commit message from staged diff:
 
-- Type: `feat` (new capability), `fix` (bug fix), `refactor` (no
-  behavior change), `docs`, `test`, `chore`, `perf`, `ci` —
-  inferred from which paths changed.
-- Subject: ≤ 72 chars, imperative mood, no trailing period.
-- Body (optional): wrap at 72 cols, explain *why* not *what* when
-  the diff is non-obvious.
+- Type (inferred from paths): `feat` / `fix` / `refactor` / `docs` / `test` / `chore` / `perf` / `ci`.
+- Subject: ≤ 72 chars, imperative, no trailing period.
+- Body (optional): wrap at 72 cols, explain *why* not *what* when non-obvious.
 
-Show the proposed message to the user and wait for approval before
-committing. The user may edit it inline.
+Show proposed message; wait for approval (user may edit inline).
 
 ### 5. Commit
 
@@ -63,12 +47,7 @@ committing. The user may edit it inline.
 git commit -m "<subject>" [-m "<body>"]
 ```
 
-Never pass `--no-verify`, `--no-gpg-sign`, or `--amend`. If a
-pre-commit hook fails *despite* the `/mol:ship commit` gate
-reporting PROCEED, that is a real signal — surface the hook output
-to the user, fix, re-stage, and run `/mol:commit` again. Do **not**
-amend; a failed commit means the commit did not happen, so amending
-would mutate the *previous* commit.
+Never `--no-verify` / `--no-gpg-sign` / `--amend`. Pre-commit hook fails despite PROCEED → real signal: surface output, fix, re-stage, re-run `/mol:commit`. Do **not** amend (failed commit means no commit, so amend mutates *previous* commit).
 
 ### 6. Report
 
@@ -81,17 +60,12 @@ next: /mol:push   (push to origin = your fork)
 
 ## Guardrails
 
-- **Do not** `git push`. That is `/mol:push`.
+- **Do not** `git push` (use `/mol:push`).
 - **Do not** stage with `-A` / `.` / globs.
 - **Do not** skip hooks (`--no-verify`).
-- **Do not** amend (`--amend`). Always create a new commit.
-- **Do not** commit `.env`, credential files, or files matching
-  `*.key` / `*.pem` / `id_rsa*` even if the user staged them —
-  warn and ask for explicit confirmation.
+- **Do not** amend — always new commit.
+- **Do not** commit `.env`, credentials, `*.key` / `*.pem` / `id_rsa*` even if staged — warn and require explicit confirmation.
 
 ## Idempotency
 
-Running `/mol:commit` on a clean tree is a no-op (reports "nothing
-to commit"). Running it twice in a row commits twice if there are
-new staged changes between the runs; otherwise the second run is a
-no-op.
+Clean tree → no-op ("nothing to commit"). Two runs commit twice only if new staged changes between; otherwise second run is no-op.

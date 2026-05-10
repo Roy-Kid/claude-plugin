@@ -5,67 +5,49 @@ argument-hint: "<commit | push | merge>"
 
 # /mol:ship — CI Parity Gate
 
-Read CLAUDE.md. Parse `mol_project:` (`$META`).
+Read CLAUDE.md → parse `mol_project:` (`$META`).
 
-This skill is **read-only**. It does not edit code, write tests, or
-run `git` state-changing commands. It executes the appropriate
-pre-flight checks and reports PROCEED or BLOCK so the caller (human or
-another skill) knows whether it is safe to `git commit`, `git push`,
-or merge.
+**Read-only.** Does not edit code, write tests, or run state-changing git. Executes pre-flight checks + reports PROCEED or BLOCK.
 
 ## Tier selection
 
-The first positional argument selects the gate. The tiers are
-cumulative — `merge` ⊇ `push` ⊇ `commit`.
+First positional arg selects the gate. Cumulative — `merge` ⊇ `push` ⊇ `commit`.
 
-- `commit` — format + lint + pre-commit hooks. Run before every
-  `git commit`. Fast (~60s).
-- `push` — adds the full test suite. Run before every `git push`.
-  Medium (5–10 min).
-- `merge` — mirrors the remote CI pipeline locally. Run before
-  merging into `main`/`master`. Heavy; budget the full CI wall-clock.
+- `commit` — format + lint + pre-commit hooks. Before every `git commit`. Fast (~60s).
+- `push` — adds full test suite. Before every `git push`. Medium (5–10 min).
+- `merge` — mirrors remote CI locally. Before merge to `main`/`master`. Heavy (full CI wall-clock).
 
-If `$ARGUMENTS` is empty, default to `commit` and state the assumption
-in the output.
+`$ARGUMENTS` empty → default to `commit` and state the assumption.
 
 ## Procedure
 
-1. **Resolve the tier** from `$ARGUMENTS`.
+1. **Resolve tier** from `$ARGUMENTS`.
 
-2. **Delegate to the `ci-guard` agent** with the tier as input. The
-   agent detects CI config, runs the tier's commands, interprets
-   failures, and reports CI-only drift modes (platform, matrix,
-   secrets, cache, services).
+2. **Delegate to `ci-guard` agent** with tier as input. Agent detects CI config, runs tier's commands, interprets failures, reports CI-only drift modes (platform, matrix, secrets, cache, services).
 
-3. **Aggregate** the agent's findings into a severity table:
+3. **Aggregate** findings into severity table:
 
    | 🚨 Critical | 🔴 High | 🟡 Medium | 🟢 Low |
    |-------------|---------|-----------|--------|
    | N           | N       | N         | N      |
 
-4. **Decide** the verdict from the tier and the findings:
+4. **Decide verdict** from tier + findings:
 
-   - `commit` tier + any 🚨 → **BLOCK COMMIT**
-   - `push` tier + any 🚨 → **BLOCK PUSH**
-   - `merge` tier + any 🚨 or 🔴 → **BLOCK MERGE**
-   - No blocker at the requested tier → **PROCEED**
-   - 🟡 / 🟢 are informational; they never block.
+   - `commit` + any 🚨 → **BLOCK COMMIT**
+   - `push` + any 🚨 → **BLOCK PUSH**
+   - `merge` + any 🚨 or 🔴 → **BLOCK MERGE**
+   - No blocker at requested tier → **PROCEED**
+   - 🟡 / 🟢 informational; never block.
 
-5. **Route fixes.** For each blocker, name the `/mol:*` skill that
-   should address it (not this skill — this skill refuses to edit):
+5. **Route fixes.** For each blocker, name the `/mol:*` skill (this skill refuses to edit):
 
-   - lint / format → `/mol:fix <file>` with the failing rule
-   - failing test → `/mol:fix` (if the test was expected to pass) or
-     `/mol:impl` (if the feature is incomplete)
-   - architecture violation surfaced by CI → `/mol:review --axis=arch`
-     then `/mol:refactor`
+   - lint / format → `/mol:fix <file>` with failing rule
+   - failing test → `/mol:fix` (expected to pass) or `/mol:impl` (feature incomplete)
+   - architecture violation surfaced by CI → `/mol:review --axis=arch` then `/mol:refactor`
    - doc drift → `/mol:docs`
-   - CI-config drift (matrix / secrets / runner) → ask the user to
-     update `$META.ci` or the workflow file itself — never edit
-     workflows automatically
+   - CI-config drift (matrix / secrets / runner) → ask user to update `$META.ci` or workflow file. Never edit workflows automatically.
 
-6. **Never auto-fix.** This skill refuses to edit code even when the
-   fix is trivial. Hand the user a concrete next action instead.
+6. **Never auto-fix.** Refuses to edit even when fix is trivial. Hand user a concrete next action.
 
 ## Output
 
@@ -82,7 +64,7 @@ Next steps:
 - <action 2>
 ```
 
-End with a one-line summary suitable for scanning:
+End with one-line summary:
 
 ```
 /mol:ship <tier>: PROCEED (N findings, none blocking)

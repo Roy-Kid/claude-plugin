@@ -1,40 +1,25 @@
 ---
-description: Open a free-form design / improvement / scientific-insight discussion with the agent. The skill drives the conversation toward convergence; on convergence it hands the agreed direction to /mol:spec to produce a binding spec, otherwise it discards the thread without leaving artifacts behind. Read-only — never writes code or specs directly. Distinct from /mol:spec (which assumes the requirement is already clear) and /mol:note (which captures decided rules, not exploratory threads). Supports Chinese and English. 通过这个 skill，和 agent 讨论代码设计、改进意见、科学洞见之类的问题；意见收敛之后形成 spec，否则 discard。
+description: Free-form design / improvement / scientific-insight discussion that drives toward convergence and either hands the agreed direction to `/mol:spec` or discards the thread. Use for exploratory threads (vs `/mol:spec` for already-clear requirements or `/mol:note` for decided rules); read-only; supports Chinese and English.
 argument-hint: "<topic or question>"
 ---
 
 # /mol:discuss — Design Discussion
 
-Read CLAUDE.md. Parse `mol_project:` (`$META`).
+Read CLAUDE.md → parse `mol_project:` (`$META`).
 
-A free-form conversational skill for working through design
-trade-offs, improvement ideas, or scientific insights *before*
-they harden into a spec. The skill is explicit about its two
-exit doors — **converge** (hand off to `/mol:spec`) or
-**discard** (leave no trace) — so a discussion never silently
-turns into half-built code or a forgotten orphan file. Distinct
-from `/mol:spec` (which assumes the requirement is already
-clear) and `/mol:note` (which captures *decided* rules, not
-exploratory threads).
+Conversational skill for working through design trade-offs, improvement ideas, or scientific insights *before* a spec. Two exit doors — **converge** (hand off to `/mol:spec`) or **discard** (leave no trace). Distinct from `/mol:spec` (requirement already clear) and `/mol:note` (captures *decided* rules).
 
 ## Procedure
 
 ### 1. Frame the topic
 
-Restate the topic in one sentence as you understand it, in the
-user's language. List the relevant code surface — files,
-functions, prior commits, related specs under `.claude/specs/`,
-related notes under `.claude/notes/` — that you read before responding.
-This anchors the discussion in concrete artifacts and makes the
-"is this about X or Y?" misalignment visible early.
+Restate the topic in one sentence in the user's language. List relevant code surface — files, functions, prior commits, related specs under `.claude/specs/`, related notes under `.claude/notes/` — that you read before responding.
 
-If the topic is genuinely vague, ask one targeted clarifying
-question and stop. Do not start exploring on a wrong premise.
+Genuinely vague → ask one targeted clarifying question and stop. Don't explore on a wrong premise.
 
 ### 2. Drive toward convergence
 
-Each turn, end with an explicit pulse on where the discussion
-stands, in this fixed shape:
+Each turn, end with a pulse:
 
 ```
 Convergence pulse
@@ -43,66 +28,40 @@ Convergence pulse
 - My read: converging | diverging | stuck
 ```
 
-Convergence signals (any one is enough): the user says
-"yes / 同意 / let's do it"; the open list is empty; two
-consecutive turns produce no new "Open" items.
+Convergence signals (any one): user says "yes / 同意 / let's do it"; open list empty; two consecutive turns produce no new "Open" items.
 
-Divergence signals: the open list grows turn-over-turn; the
-user keeps reframing the topic; both of you keep proposing
-mutually incompatible alternatives without reduction.
+Divergence signals: open list grows turn-over-turn; user keeps reframing topic; both keep proposing mutually incompatible alternatives without reduction.
 
-Hard cap: **8 turns**. At turn 8, force a verdict in Step 3 or
-Step 4 — no skill should silently consume an unbounded
-conversation.
+Hard cap: **8 turns**. At turn 8 → force verdict (Step 3 or 4).
 
 ### 3. Converge → hand off to `/mol:spec`
 
-When the pulse reads "converging" *and* the open list is
-empty (or the user explicitly accepts the remaining opens as
-out-of-scope), package the conclusion:
+When pulse reads "converging" *and* open list is empty (or user accepts remaining opens as out-of-scope):
 
-- one-paragraph requirement, in the user's language, that a
-  fresh `/mol:spec` invocation could consume verbatim
-- a short "Context from discussion" block listing the
-  alternatives considered and the reason this one won — this
-  becomes the spec's *Why* later
-- the relevant file paths surfaced in Step 1
+- one-paragraph requirement, in user's language, that a fresh `/mol:spec` could consume verbatim
+- short "Context from discussion" block listing alternatives considered and reason this won — becomes spec's *Why*
+- relevant file paths from Step 1
 
-Tell the user: *"converged. To produce the binding spec,
-run `/mol:spec <one-paragraph requirement>`. Paste the
-Context block as additional context if you want the
-trade-off rationale captured."* Do not invoke `/mol:spec`
-yourself — the user controls when a spec gets created.
+Tell the user: *"converged. To produce the binding spec, run `/mol:spec <one-paragraph requirement>`. Paste the Context block as additional context if you want the trade-off rationale captured."* Do not invoke `/mol:spec` yourself.
 
 ### 4. Discard cleanly
 
-When the pulse reads "diverging" or "stuck" for two
-consecutive turns, when the user changes their mind about
-the topic, when the question dissolves into a non-question,
-or when the 8-turn cap fires without convergence:
+When pulse reads "diverging" or "stuck" for two consecutive turns, when user changes mind, when question dissolves into a non-question, or when 8-turn cap fires without convergence:
 
-- say so explicitly and name the reason in one sentence
-  (e.g. *"discarded — the question turned out to depend on a
-  decision in `auth/` that hasn't been made yet"*)
-- write nothing: no notes, no draft spec, no `.claude/notes/` entry,
-  no `.claude/specs/` entry
-- if a *stable rule* fell out of the discussion (rare but
-  possible), suggest the user run `/mol:note` separately —
-  do not promote it yourself
+- say so explicitly + name the reason in one sentence (e.g. *"discarded — depends on a decision in `auth/` that hasn't been made yet"*)
+- write nothing: no notes, no draft spec, no `.claude/notes/` entry, no `.claude/specs/` entry
+- if a *stable rule* fell out (rare), suggest user run `/mol:note` separately — do not promote yourself
 
-Discarding is a first-class outcome. Not-converging is fine;
-shipping a half-decided spec is not.
+Discard is first-class. Not-converging is fine; shipping a half-decided spec is not.
 
 ## Output format
 
-- One framing sentence + the surfaced code-surface bullets
-  (Step 1).
+- Framing sentence + surfaced code-surface bullets (Step 1).
 - Per-turn `Convergence pulse` block.
-- On convergence: the one-paragraph requirement + Context
-  block + handoff instruction.
-- On discard: the one-sentence reason; nothing else.
+- On convergence: one-paragraph requirement + Context block + handoff instruction.
+- On discard: one-sentence reason; nothing else.
 
-End with a one-line summary (F2):
+One-line F2 summary:
 
 ```
 /mol:discuss <topic>: converged → /mol:spec <one-line requirement>
@@ -116,17 +75,8 @@ or
 
 ## Guardrails
 
-- **Read-only on code.** This skill never edits files. Even
-  on convergence the spec is written by `/mol:spec`, not by
-  this skill.
-- **Do not promote** outputs into `.claude/specs/` or
-  `.claude/notes/notes.md` directly. Convergence hands off; discard
-  leaves no trace. Both paths refuse to write here.
-- **Do not silently merge with `/mol:note`.** If a stable
-  rule emerges, surface it as a `/mol:note` suggestion —
-  the user runs it.
-- **Do not auto-loop or auto-invoke `/mol:spec`.** The user
-  decides when a discussion becomes a spec; this skill only
-  prepares the handoff payload.
-- **Hard 8-turn cap.** A discussion that hasn't converged in
-  8 turns has a deeper problem than another turn can fix.
+- **Read-only on code.** Never edits files. Spec written by `/mol:spec`.
+- **Do not promote** outputs into `.claude/specs/` or `.claude/notes/notes.md`. Convergence hands off; discard leaves no trace.
+- **Do not silently merge with `/mol:note`.** Stable rule emerges → surface as `/mol:note` suggestion.
+- **Do not auto-loop or auto-invoke `/mol:spec`.** User decides.
+- **Hard 8-turn cap.**

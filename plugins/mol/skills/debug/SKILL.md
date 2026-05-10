@@ -5,28 +5,20 @@ argument-hint: "<error message or symptom>"
 
 # /mol:debug — Diagnosis Only
 
-Read CLAUDE.md. Parse `mol_project:` (`$META`).
+Read CLAUDE.md → parse `mol_project:` (`$META`).
 
-This skill **never** edits files. It produces a diagnosis only.
-To patch, hand the report off to `/mol:fix`.
+**Never edits files.** Diagnosis only. To patch, hand report to `/mol:fix`.
 
 ## Procedure
 
-Delegate the entire diagnosis to the `debugger` agent with
-`$ARGUMENTS` as the failure symptom. The agent classifies the
-failure (build / test / runtime), runs `$META.build.*` to gather
-evidence, and returns:
+Delegate entire diagnosis to `debugger` agent with `$ARGUMENTS` as failure symptom. Agent classifies (build / test / runtime), runs `$META.build.*` to gather evidence, returns:
 
 - **Classification.**
 - **Root cause** — one paragraph, file:line precise.
 - **Fix recommendation** — what to change, not the change.
-- **Preventive measure** — the test category + assertion shape
-  that would catch a regression.
-- (when evidence is inconclusive) **Open questions** — specific
-  evidence the user should gather before re-invoking.
+- **Preventive measure** — test category + assertion shape that catches a regression.
+- (when evidence inconclusive) **Open questions** — specific evidence user should gather before re-invoking.
 
-Render the agent's output verbatim. Do not re-summarize — the
-agent's structured report is the contract `/mol:fix` reads.
+Render agent output verbatim. Do not re-summarize — agent's structured report is the contract `/mol:fix` reads.
 
-End with the one-liner: *"diagnosis only — invoke `/mol:fix
-<bug>` to apply the recommendation."*
+End with: *"diagnosis only — invoke `/mol:fix <bug>` to apply the recommendation."*
