@@ -1,5 +1,5 @@
 ---
-description: Multi-axis static code review — fans out to single-axis review agents, collects their findings, hands them to the `reviewer` agent for aggregation + verdict. **Static only**; runtime evaluation (Playwright / benchmarks / numerical oracles) is suggested via `acceptance.md` `type` fields and dispatched manually to runtime-evaluator skills like `/mol:web`, per `plugins/mol/docs/evaluator-protocol.md`. Read-only. Supports `--axis=<name>` to scope to a single review dimension.
+description: Multi-axis static code review — fans out to single-axis review agents, collects their findings, hands them to the `reviewer` agent for aggregation + verdict. **Static only**; runtime evaluation (Playwright / benchmarks / numerical oracles) is suggested via `acceptance.md` `type` fields and dispatched manually to runtime-evaluator skills like `/mol:web`, per `plugins/mol/rules/evaluator-protocol.md`. Read-only. Supports `--axis=<name>` to scope to a single review dimension.
 argument-hint: "[<path-or-spec-slug>] [--axis=<name>]"
 ---
 
@@ -100,7 +100,7 @@ referenced in the diff), inspect its `criteria:` list:
   invocation.
 - Use the `evaluator_hint` field if set; otherwise look up the type
   in the **Known evaluator plugins** table in
-  `plugins/mol/docs/evaluator-protocol.md`.
+  `plugins/mol/rules/evaluator-protocol.md`.
 - If no plugin is registered for that type, say so plainly:
   *"ac-007 (performance): no evaluator plugin registered; verify
   manually."*

@@ -46,7 +46,7 @@ project folder); the active/passive split lives inside `.claude/`.
 > deliberately distinct — "notes" = what the agent reads, "agents" = what the
 > agent *is*.
 
-Full rules in [`docs/design-principles.md`](../mol/docs/design-principles.md).
+Full rules in [`rules/design-principles.md`](../mol/rules/design-principles.md).
 Run `/mol-agent:check` to verify compliance.
 
 ## Adopt in a project

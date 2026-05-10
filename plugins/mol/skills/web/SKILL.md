@@ -207,5 +207,6 @@ to worry about.
 browser-automation MCP the user installed), so its only asset is
 this procedure plus the `playwright-evaluator` agent — fits
 inside `mol` as a sibling to `/mol:review`, behind a self-detect
-gate. Other runtime evaluators (`/mol:bench`, `/mol:numeric`, …)
-follow the same shape via `plugins/mol/docs/evaluator-protocol.md`.
+gate. Other runtime evaluators planned under the same shape
+(future `/mol:bench`, future `/mol:numeric`, …) follow
+`plugins/mol/rules/evaluator-protocol.md`.

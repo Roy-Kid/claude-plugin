@@ -16,7 +16,7 @@ claude-plugin/
 │   ├── mol/                          # 17 workflow skills + 16 single-axis agents
 │   │   ├── .claude-plugin/plugin.json
 │   │   ├── README.md
-│   │   ├── docs/
+│   │   ├── rules/
 │   │   │   ├── claude-md-metadata.md # mol_project frontmatter contract
 │   │   │   ├── design-principles.md  # harness layering + design rules
 │   │   │   ├── agent-design.md       # producer/reviewer split rationale

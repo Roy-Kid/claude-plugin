@@ -115,6 +115,14 @@ that don't apply to the project):
 - Never weaken a test to make code pass.
 - Each test tests exactly one thing.
 - Domain tests are mandatory when `mol_project.science.required`.
+- **Type safety in tests, too.** Test files must satisfy the
+  project's static type checker — types in test code are not
+  optional. Run the type checker (`mypy --strict` / `tsc --strict` /
+  `cargo check` / etc., per `mol_project.build.check`) as part of
+  the RED→GREEN loop; a type-check failure counts as a test
+  failure. Forbid `any` / `Any` / `interface{}` / `dyn Any` in test
+  code just as in production — there is no "it's just a test"
+  exception.
 
 ## Output
 

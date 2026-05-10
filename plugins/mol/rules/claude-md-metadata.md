@@ -110,6 +110,33 @@ Missing keys cause the skill to fall back to a project-type default
 |------------|------|-------------------------------------------------------------------|
 | `required` | bool | `true` gates `/mol:litrev` and the `scientist` agent onto the `/mol:impl` path. `false` skips both (useful for infrastructure projects like molq) |
 
+### `stage` (optional, enum)
+
+The project's lifecycle stage. Governs how aggressive the writing
+skills (`/mol:impl`, `/mol:fix`, `/mol:refactor`, `/mol:simplify`)
+and reviewers (`pm`, `janitor`) are allowed to be when touching
+existing code. See `plugins/mol/rules/stage-policy.md` for the full
+behavioral matrix.
+
+| Value          | Intent                                | Effect summary                                                       |
+|----------------|---------------------------------------|----------------------------------------------------------------------|
+| `experimental` | pre-1.0, churn allowed (the default)  | breaking changes are normal, legacy code deleted on sight, no shims  |
+| `beta`         | pre-1.0 with known users              | breaking changes allowed at minor bumps with migration note          |
+| `stable`       | `≥ 1.0`, semver applies               | additive changes preferred; deprecate-then-remove across one major   |
+| `maintenance`  | bug fixes / security only             | `/mol:impl` and `/mol:refactor` refuse; only `/mol:fix` proceeds     |
+
+If absent, skills default to `experimental` and emit a warning on
+first read. This is intentional graceful degradation — adopting the
+harness on a new project should not require thinking about lifecycle
+on day one — but the warning surfaces the field so a `1.x` library
+maintainer is reminded to set `stage: stable`.
+
+Example:
+
+```yaml
+stage: experimental
+```
+
 ### `ci` (optional, object)
 
 Used by `/mol:ship` and the `ci-guard` agent. If absent, `ci-guard`

@@ -51,6 +51,7 @@ What's left, and what you cover:
 | Style drift              | line lengths, brace style, import order, trailing whitespace, mixed tabs/spaces — only what the project's formatter is *supposed* to enforce but isn't |
 | Copy-paste duplication   | near-identical blocks across files that were not extracted; only flag when the duplication is ≥ ~6 lines and the divergence is < 30% |
 | Sprawling functions      | functions exceeding `mol_project.style.max_function_lines` (default: 80) |
+| Loose-type escape hatches| `any` / `unknown` (TypeScript), `Any` or missing function signatures (Python), `interface{}` / bare `any` (Go), `dyn Any` (Rust) used outside a deserialization boundary; also: a static type checker (`mypy` / `tsc` / `cargo check`) configured in `mol_project.build.check` that is failing or has been silenced for the touched files |
 | Aesthetic-rule violations| anything captured in `.claude/notes/notes.md` § naming, `.claude/notes/decisions/`, `.claude/notes/rubrics/` that the diff contradicts |
 
 You do **not** flag:
@@ -99,6 +100,22 @@ without an owner are 🔴.
 If a marker has no owner annotation (`TODO(name): …`) at all and is
 older than the window, that is a 🟡 separately from staleness — the
 project's rule is "TODOs must name an owner".
+
+### Stage-aware tuning
+
+`mol_project.stage` (see `plugins/mol/rules/stage-policy.md`)
+modifies the effective window before age comparison:
+
+| Stage          | Effective window      | Severity-tier shift                         |
+|----------------|-----------------------|---------------------------------------------|
+| `experimental` | `window / 2`          | none (short-lived projects shouldn't carry old markers) |
+| `beta`         | `window` (default)    | none                                        |
+| `stable`       | `window × 2`          | none (long-lived markers are legitimate while waiting on a major bump) |
+| `maintenance`  | `window` (default)    | every finding downgraded one tier (🚨→🔴, 🔴→🟡, 🟡→🟢) — the user has declared cosmetic noise out of scope |
+
+State the active stage and the resolved window in the output footer
+so a 🟡 vs. 🟢 verdict is reproducible:
+`stage: stable — debt window doubled to 120d`.
 
 ## Procedure
 

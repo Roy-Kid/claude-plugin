@@ -26,7 +26,7 @@ The target state is everything the plugin **as it sits on disk
 right now** dictates. Concretely:
 
 1. **Frontmatter contract** — `mol_project:` shape per
-   `${CLAUDE_PLUGIN_ROOT}/plugins/mol/docs/claude-md-metadata.md`.
+   `${CLAUDE_PLUGIN_ROOT}/plugins/mol/rules/claude-md-metadata.md`.
    Whatever fields that document currently lists as required — and
    in their current names — are the target.
 2. **Managed-section templates** — the `<!-- mol-agent:bootstrap:managed

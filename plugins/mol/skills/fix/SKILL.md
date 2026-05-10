@@ -5,7 +5,20 @@ argument-hint: "<bug description, error message, or failing test>"
 
 # /mol:fix — Quick Fix
 
-Read CLAUDE.md. Parse `mol_project:` (`$META`).
+Read CLAUDE.md. Parse `mol_project:` (`$META`). Read `$META.stage`
+(default: `experimental`). Print `[mol] stage: <value>`.
+
+`/mol:fix` is the **only** writing skill that proceeds at every
+stage — bugs are always in scope. The stage tightens scope discipline
+in Step 3 per `plugins/mol/rules/stage-policy.md`:
+
+- `maintenance` — the patch may not touch lines unrelated to the
+  reproduction; may not introduce new abstractions; may not rename
+  any symbol (even local) outside the immediate fix surface.
+- `stable` — additive only by default; modifying an existing public
+  signature requires a deprecation shim or explicit user approval.
+- `beta` / `experimental` — standard scope discipline (smallest
+  change that resolves the issue).
 
 ## Procedure
 
@@ -27,6 +40,11 @@ Read CLAUDE.md. Parse `mol_project:` (`$META`).
    - If the root cause suggests a missing test, delegate to the `tester`
      agent to write a regression test BEFORE the fix (RED), then fix
      (GREEN).
+   - **Type safety.** A patch must not introduce escape-hatch top
+     types (`any` / `Any` / `interface{}` / `dyn Any`) and must not
+     drop existing type annotations. The patch must satisfy the
+     project's static type checker. Exception: deserialization at a
+     system boundary, narrowed immediately.
 
 4. **Verify.** Run the full `$META.build.test` suite to confirm no
    regressions. Run `$META.build.check` for format / lint.

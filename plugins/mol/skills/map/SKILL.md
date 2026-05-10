@@ -11,7 +11,7 @@ adoption hint and stop.
 Resolve the blueprint path: always `<root>/.claude/notes/architecture.md`.
 Do **not** derive it from `$META.notes_path` — passive internal
 context belongs under `.claude/notes/` per
-`plugins/mol/docs/design-principles.md` L1, regardless of where
+`plugins/mol/rules/design-principles.md` L1, regardless of where
 `notes_path` happens to point. A project whose `notes_path` is
 configured outside `.claude/notes/` is itself an L1 violation and
 `/mol-agent:check` will flag it; this skill must not propagate that

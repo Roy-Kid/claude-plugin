@@ -7,7 +7,10 @@ model: inherit
 
 Read CLAUDE.md and parse `mol_project:` before starting. Read
 `mol_project.notes_path` for recent decisions about API, deprecation,
-or downstream contracts.
+or downstream contracts. Read `mol_project.stage` (default:
+`experimental`) — it controls how to map breaking-change findings
+to severity (see § Stage-aware severity below and
+`plugins/mol/rules/stage-policy.md`).
 
 ## Role
 
@@ -110,6 +113,9 @@ pins to?
 
 ### Severity heuristics
 
+The defaults below are calibrated for `stage: stable`. Apply the
+**Stage-aware severity** adjustment below before reporting.
+
 - 🚨 — removes or renames a public symbol with no deprecation path;
   breaks serialization / pickle round-trip; breaks a documented
   downstream integration contract.
@@ -121,6 +127,25 @@ pins to?
 - 🟢 — style: abbreviation in a new public name when the codebase
   spells things out; missing cross-reference between related public
   symbols.
+
+### Stage-aware severity
+
+Breaking-change severity scales with `mol_project.stage`. Apply
+this adjustment **only** to findings about removed / renamed /
+re-typed public symbols (the 🚨 bucket above) — additive findings
+(🔴 / 🟡 / 🟢) are stage-independent.
+
+| Stage          | Unannounced public removal / rename | Why |
+|----------------|-------------------------------------|-----|
+| `experimental` | 🟢 (informational)                  | pre-1.0 churn is normal; the harness deletes legacy on sight |
+| `beta`         | 🔴                                  | users exist; should ship a migration note but not block      |
+| `stable`       | 🚨 (default)                        | semver violation                                              |
+| `maintenance`  | 🚨 + refuse                         | API changes are out of scope at this stage entirely           |
+
+Always state the stage in your output footer so the reader
+understands *why* a removed symbol was 🟢 rather than 🚨:
+`stage: experimental — public-removal severity demoted per
+plugins/mol/rules/stage-policy.md`.
 
 ## Procedure
 

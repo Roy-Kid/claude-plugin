@@ -10,7 +10,7 @@ Inspect a repository's agent harness — `docs/`, `.claude/notes/`, `.claude/`,
 
 1. **Health** — is the harness installed and internally consistent?
 2. **Design** — does it follow the contract in
-   `${CLAUDE_PLUGIN_ROOT}/docs/design-principles.md`?
+   `${CLAUDE_PLUGIN_ROOT}/rules/design-principles.md`?
 
 Apply to any project that uses the mol harness. **Not** for the
 `claude-plugin/` marketplace repository itself — that has no
@@ -33,7 +33,7 @@ Cheap checks first; fail-fast if the harness isn't there at all:
 - **`mol_project:` frontmatter** (when the project opted into the
   `mol` contract): is the YAML block at the top of CLAUDE.md
   parseable? Are required fields populated (per
-  `${CLAUDE_PLUGIN_ROOT}/docs/claude-md-metadata.md`)? Flag missing
+  `${CLAUDE_PLUGIN_ROOT}/rules/claude-md-metadata.md`)? Flag missing
   or malformed fields as 🔴.
 - **Spec INDEX consistency**: for every file in `.claude/specs/`,
   is it listed in `INDEX.md`? For every entry in `INDEX.md`, does
@@ -47,7 +47,7 @@ Cheap checks first; fail-fast if the harness isn't there at all:
 
 ### Phase 2 — Design (full checklist)
 
-Read `${CLAUDE_PLUGIN_ROOT}/docs/design-principles.md` for the full
+Read `${CLAUDE_PLUGIN_ROOT}/rules/design-principles.md` for the full
 checklist. Walk each section against the target tree.
 
 #### Layering (L)
@@ -168,7 +168,7 @@ CLAUDE.md starts with a `mol_project:` frontmatter block, and that:
 #### Anti-patterns
 
 Spot-check for the patterns listed in
-`docs/design-principles.md` § 7:
+`rules/design-principles.md` § 7:
 
 - template sprawl (large skill/agent set on a tiny repo)
 - knowledge in `.claude/` (rules embedded in skill/agent bodies that

@@ -81,7 +81,7 @@ Check each file against the five janitor rules:
 ### 4. Audit cross-file
 
 - **Shared rules belong in docs.** A rule repeated verbatim in
-  three or more files belongs in `plugins/mol/docs/` (or the
+  three or more files belongs in `plugins/mol/rules/` (or the
   plugin's `docs/` folder) and should be referenced, not inlined.
 - **Local rules stay local.** A rule that applies to exactly one
   skill must live in that skill, not in shared docs.

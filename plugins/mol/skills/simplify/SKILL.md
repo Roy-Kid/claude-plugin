@@ -5,12 +5,27 @@ argument-hint: "[path or list of files]"
 
 # /mol:simplify — Apply Hygiene Cleanup
 
-Read CLAUDE.md. Parse `mol_project:` (`$META`).
+Read CLAUDE.md. Parse `mol_project:` (`$META`). Read `$META.stage`
+(default: `experimental`). Print `[mol] stage: <value>`.
+
+Stage gate per `plugins/mol/rules/stage-policy.md` — applied before
+the scope contract below:
+
+- `maintenance` — only the most conservative subset: dead-import
+  removal, debug-residue deletion, and stale-`TODO` deletion *if
+  and only if* the marker references code already removed by an
+  earlier bug-fix commit. Naming-drift, magic-literal, and
+  constant-extraction findings are surfaced as `[skipped — stage:
+  maintenance]` and never applied.
+- `stable` — refuse to delete anything still referenced by a
+  `@deprecated` / `# DEPRECATED` marker (the deprecation must run
+  through one full major version before removal).
+- `beta` / `experimental` — full scope contract applies.
 
 Write-mode counterpart to the `janitor` review axis: `janitor`
 stays read-only and emits hygiene findings; this skill applies
 them under a build/test gate with regression revert. See
-`plugins/mol/docs/agent-design.md` § "Producer vs reviewer".
+`plugins/mol/rules/agent-design.md` § "Producer vs reviewer".
 
 ## Scope contract
 

@@ -284,9 +284,16 @@ require a deliberate decision to break>
 ```
 
 If the user opts into the `mol` plugin contract, prepend a
-`mol_project:` YAML block per `docs/claude-md-metadata.md` and route
+`mol_project:` YAML block per `rules/claude-md-metadata.md` and route
 references in the body to the project's chosen `notes_path` and
-`specs_path`.
+`specs_path`. Set `stage: experimental` by default — that is the
+right answer for any pre-1.0 project, and the user can change it
+later (see `plugins/mol/rules/stage-policy.md` for the four
+allowed values: `experimental`, `beta`, `stable`, `maintenance`).
+If the inspection in Step 1 found a `1.x.y` version on disk
+(`pyproject.toml`, `Cargo.toml`, `package.json`), surface that to
+the user and ask whether they want `stable` instead — but still
+default to `experimental` if they don't pick.
 
 ---
 

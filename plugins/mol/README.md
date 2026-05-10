@@ -48,13 +48,13 @@ active/passive split lives inside `.claude/`.
 > "agents" = what the agent *is*.
 
 Notes are kept; specs are intentionally ephemeral. Full rules in
-[`docs/design-principles.md`](docs/design-principles.md). Run
+[`rules/design-principles.md`](rules/design-principles.md). Run
 `/mol-agent:check` to verify compliance.
 
 ## Skills
 
 All `mol` skills require a `mol_project:` frontmatter in CLAUDE.md
-(see [`docs/claude-md-metadata.md`](docs/claude-md-metadata.md)) and
+(see [`rules/claude-md-metadata.md`](rules/claude-md-metadata.md)) and
 fail fast with an adoption hint when it is missing. To create
 CLAUDE.md and the surrounding harness, run `/mol-agent:bootstrap`
 first.
@@ -100,6 +100,7 @@ reach for it, and a one-line example.
 |---|---|---|---|
 | `/mol:docs` | Mode A: docstring audit keyed to `mol_project.doc.style` (google / rustdoc / jsdoc-tiered / doxygen). Mode B: narrative tutorial (with mandatory two-part Part 1 derivation + Part 2 code mapping for science topics). | After implementing a public API; when adding a tutorial; when an audit finds drift. | `/mol:docs molpy.forces.morse` &nbsp;·&nbsp; `/mol:docs tutorial: running your first MD` |
 | `/mol:note` | Capture an architectural decision into `.claude/notes/notes.md`. Detects conflicts with existing notes / CLAUDE.md, cleans up stale notes, and promotes stable rules into CLAUDE.md (or a `.claude/notes/<topic>.md` page). | When a non-obvious convention is decided in conversation and would otherwise be re-derived later. | `/mol:note use n_atoms (not natoms) in all public signatures` |
+| `/mol:map [<scope>]` | Build or refresh `.claude/notes/architecture.md` — the passive project blueprint (modules, public surface, style summary, layer roles) consumed by `librarian` during `/mol:spec` Step 4.5. Delegates inventory to the `architect` agent; diffs against the existing blueprint; writes only after explicit user approval. Idempotent — a re-run with no drift exits without writing. | After significant architectural changes; before a sprint of new specs that need accurate placement / reuse advice. | `/mol:map` &nbsp;·&nbsp; `/mol:map src/forces/` |
 
 ### 6 — Git workflow (writes / pushes)
 
@@ -157,7 +158,7 @@ Agents are invoked only through skills (never directly by the user).
 Each owns one expertise axis. They split into two kinds —
 **producer** agents (write content to files) and **reviewer** agents
 (read-only, emit findings) — explained in
-[`docs/agent-design.md`](docs/agent-design.md).
+[`rules/agent-design.md`](rules/agent-design.md).
 
 | Agent | Kind | Axis |
 |---|---|---|
@@ -188,10 +189,10 @@ The plugin follows the harness-engineering layering plus a strict
 two-layer model (skill = orchestrator + workflow; agent = single
 expertise axis). The producer-vs-reviewer split — why `tester`
 writes but `optimizer` doesn't — is documented in
-[`docs/agent-design.md`](docs/agent-design.md). Layering,
+[`rules/agent-design.md`](rules/agent-design.md). Layering,
 orthogonality, knowledge-locality, capability, workflow, output, and
 idempotency rules are spelled out — and audit-checked — in
-[`docs/design-principles.md`](docs/design-principles.md). Run
+[`rules/design-principles.md`](rules/design-principles.md). Run
 `/mol-agent:check` against any project's harness to verify
 compliance. (The marketplace repo itself has no harness; use
 `/mol-plugin:check` for its self-audit.)
