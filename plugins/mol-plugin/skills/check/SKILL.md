@@ -58,7 +58,7 @@ For each `plugins/<plugin>/agents/<agent>.md`:
 ### 5. Cross-plugin sanity
 
 - no two skills across plugins share the same `<plugin>:<verb>` qualified name
-- skills referencing each other (e.g. `/mol-agent:check` inside `/mol-agent:bootstrap`) reference only existing skills
+- skills referencing each other (e.g. `/mol:bootstrap` inside `/mol:spec`) reference only existing skills
 - READMEs reference only existing skills
 
 ### 6. Output
@@ -77,7 +77,6 @@ Count summary:
 | Plugin       | 🚨 | 🔴 | 🟡 | 🟢 |
 |--------------|----|----|----|----|
 | mol          |    |    |    |    |
-| mol-agent    |    |    |    |    |
 | mol-plugin   |    |    |    |    |
 
 Verdict: PUBLISH-READY / FIX REQUIRED.

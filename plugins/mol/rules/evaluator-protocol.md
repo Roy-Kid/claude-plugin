@@ -241,8 +241,7 @@ Add to this table when a new evaluator skill lands inside `mol`.
 - **Not a plugin contract.** Runtime evaluators live as `/mol:*`
   skills inside the `mol` plugin (not as separate plugins).
   Plugins are reserved for capability boundaries that justify
-  independent versioning and dependency scope (e.g. `mol-agent`
-  owns harness lifecycle; `mol-plugin` owns marketplace
+  independent versioning and dependency scope (e.g. `mol-plugin` owns marketplace
   maintenance). Evaluators are just procedures that consume a
   shared artifact and emit a shared verdict shape — they do not
   warrant their own plugin scope.

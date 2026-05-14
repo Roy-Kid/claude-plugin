@@ -1,89 +1,100 @@
 ---
-description: Multi-axis static code review — fans out to single-axis review agents and aggregates findings into one verdict. Use after writing or modifying code; static only — runtime evaluation is dispatched separately via `/mol:web` and other evaluator skills per `acceptance.md` `type` fields.
-argument-hint: "[<path-or-spec-slug>] [--axis=<name>]"
+description: Multi-axis static code review with one aggregated verdict.
+argument-hint: "[<path> ...] [--axis=<name>[,<name>...]]"
 ---
 
 # /mol:review — Multi-Axis Code Review
 
-Read CLAUDE.md → parse `mol_project:` (`$META`).
+Static code review only. Read `CLAUDE.md` and parse `mol_project:` metadata when available.
 
-## Step 1 — Parse arguments
+## 1. Resolve scope
 
-`$ARGUMENTS` may contain:
+`$ARGUMENTS` may include:
 
-- Path / list of modified files; else default to `git diff --name-only`.
-- Spec slug (no slash, no dot, matches a file under `$META.specs_path`). Present → also read `{$META.specs_path}{slug}.acceptance.md` and use its `type: code` criteria to focus reviewers.
-- `--axis=<name>` — scope to one dimension:
+- file path(s)
+- directory path(s)
+- `--axis=<name>` for one review axis
+- `--axis=<a,b,c>` for multiple review axes
 
-  | Axis flag | Agent invoked |
-  |---|---|
-  | `arch` | `architect` |
-  | `perf` | `optimizer` |
-  | `docs` | `documenter` (Mode A: audit) |
-  | `ux` | `undergrad` |
-  | `api` | `pm` |
-  | `science` | `scientist` (gated on `$META.science.required`) |
-  | `numerics` | `compute-scientist` (gated on `$META.science.required`) |
-  | `visual` | `web-design` |
-  | `security` | `security-reviewer` |
-  | `hygiene` | `janitor` |
+If no path is provided, review files from:
 
-  No `--axis` → working set is **all axes** (gating still applies).
+```bash
+git diff --name-only
+````
 
-`--axis=<name>` whose gate fails (e.g. `--axis=science` with `science.required: false`) → refuse and explain.
+If no axis is provided, run all applicable axes.
 
-## Step 2 — Fan out to working set (single message, parallel)
+Supported axes:
 
-Delegate in parallel. Full set (no `--axis`):
+| Axis       | Agent                                                    |
+| ---------- | -------------------------------------------------------- |
+| `arch`     | `architect`                                              |
+| `perf`     | `optimizer`                                              |
+| `docs`     | `documenter` audit mode                                  |
+| `ux`       | `undergrad`                                              |
+| `api`      | `pm`                                                     |
+| `science`  | `scientist`, only when science review is enabled         |
+| `numerics` | `compute-scientist`, only when science review is enabled |
+| `visual`   | `web-design`, only for frontend/UI files                 |
+| `security` | `security-reviewer`                                      |
+| `hygiene`  | `janitor`                                                |
 
-1. **Architecture** — `architect`.
-2. **Performance** — `optimizer`.
-3. **Documentation** — `documenter` (Mode A: audit).
-4. **User experience** — `undergrad` (user-facing API, onboarding, extension story).
-5. **Product / public-API** — `pm` (public-surface naming, breaking-change risk, downstream contracts).
-6. **Scientific correctness** — `scientist`, **only if** `$META.science.required: true`.
-7. **Numerical stability / HPC readiness** — `compute-scientist`, **only if** `$META.science.required: true`. Self-detects HPC relevance per file; silently skips.
-8. **Visual design** — `web-design`. Always delegated; self-skips per file with no frontend.
-9. **Security** — `security-reviewer`. Always delegated; self-skips per file with no attack surface.
-10. **Hygiene** — `janitor`. Always runs. Reads `.claude/notes/` for captured aesthetic rules; emits hygiene findings + suggestions for new rules via `/mol:note`.
+Unknown axis → refuse and list supported axes.
 
-Findings format: `<emoji> file:line — message` (🚨 Critical / 🔴 High / 🟡 Medium / 🟢 Low).
+Requested gated axis that is unavailable → refuse and explain.
 
-## Step 3 — Aggregate via `reviewer` agent
+## 2. Fan out to selected reviewers
 
-Collect every agent's raw findings verbatim (including "N/A for this file" passes from `web-design` / `security-reviewer`, and rule-capture suggestions from `janitor`). Pass to `reviewer` with dimensions covered, file scope, and any acceptance-slug. `reviewer` handles:
+Delegate each selected axis to its matching agent.
 
-- deduplication by `(file, line, category)`
-- conflict resolution between contradicting agents
-- severity table
-- listing 🚨 / 🔴 findings verbatim
-- verdict line (APPROVE / REQUEST CHANGES / BLOCK)
-- rule-capture suggestions section (when `janitor` returned any)
+Each agent should review only its own dimension.
 
-`/mol:review` does **not** re-aggregate — renders exactly what `reviewer` returns.
+Findings must use this format:
 
-## Step 4 — Runtime evaluator handoff (skill-level)
-
-Static-only. If `acceptance.md` is in scope (slug passed, or found alongside diff-referenced spec), inspect its `criteria:`:
-
-- For every criterion with `type ∈ {ui_runtime, scientific, performance, runtime}` **whose `status` is `pending` or `failed`**, emit a *suggestion line* — never an invocation. Skip `verified` (evaluator already ran).
-- Use `evaluator_hint` if set; else look up the type in **Known evaluator plugins** in `plugins/mol/rules/evaluator-protocol.md`.
-- No registered plugin for that type → say so plainly: *"ac-007 (performance): no evaluator plugin registered; verify manually."*
-
-Section format:
-
-```
-## Runtime evaluators (manual)
-
-- ac-004 (ui_runtime) → `/mol:web <slug> ac-004`
-- ac-005 (ui_runtime) → `/mol:web <slug> ac-005`
-- ac-007 (performance) → no evaluator skill; verify by hand
+```text
+<severity> file:line — message
 ```
 
-User decides whether/when to run any. `/mol:review` does not auto-dispatch.
+Severity levels:
 
-Pending runtime evaluators → append note to verdict: *"static APPROVE; 3 runtime criteria still unverified."*
+```text
+🚨 Critical
+🔴 High
+🟡 Medium
+🟢 Low
+```
 
-## Step 5 — One-line summary
+Agents may return `N/A` when their axis does not apply to the selected files.
 
-Files reviewed, axes covered, verdict, count of findings by severity, count of pending runtime criteria (if any).
+`janitor` also reads `.claude/notes/` and may suggest reusable rule captures.
+
+## 3. Aggregate
+
+Pass all raw reviewer outputs to `reviewer`.
+
+The `reviewer` handles:
+
+* deduplication
+* conflict resolution
+* severity table
+* final verdict
+* reusable-rule suggestions from `janitor`
+
+Verdict must be one of:
+
+```text
+APPROVE
+REQUEST CHANGES
+BLOCK
+```
+
+`/mol:review` must render exactly what `reviewer` returns.
+
+## 4. Final summary
+
+Print one line with:
+
+* reviewed file count
+* axes covered
+* verdict
+* findings by severity

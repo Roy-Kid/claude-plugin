@@ -1,11 +1,11 @@
 ---
-description: Scaffold a new skill inside one of the molcrafts plugins (mol, mol-agent, mol-plugin) with a complete runnable SKILL.md (no TODO placeholders) and an updated README row. Use to add a new top-level skill; runs `/mol-plugin:check` at the end to verify.
+description: Scaffold a new skill inside one of the molcrafts plugins (mol, mol-plugin) with a complete runnable SKILL.md (no TODO placeholders) and an updated README row. Use to add a new top-level skill; runs `/mol-plugin:check` at the end to verify.
 argument-hint: "<plugin:skill-name> [<one-line description>]"
 ---
 
 # /mol-plugin:new-skill — Skill Scaffold
 
-Scaffold a new skill in this marketplace (e.g. `mol:bench`, `mol-agent:foo`, `mol-plugin:audit-templates`).
+Scaffold a new skill in this marketplace (e.g. `mol:bench`, `mol-plugin:audit-templates`).
 
 Write surface: `plugins/<plugin>/skills/<skill-name>/SKILL.md` + one appended row in `plugins/<plugin>/README.md`'s skills table. Never touches existing skills, `plugin.json`, or other metadata.
 
@@ -23,7 +23,7 @@ Form: `<plugin>:<skill-name> [<description>]`.
 
 Validate:
 
-- `<plugin>` ∈ `mol`, `mol-agent`, `mol-plugin` (or another existing dir under `plugins/`).
+- `<plugin>` ∈ `mol`, `mol-plugin` (or another existing dir under `plugins/`).
 - `<skill-name>` is kebab-case, no spaces, not already taken.
 - Description, if given, is one sentence.
 

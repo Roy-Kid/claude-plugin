@@ -7,7 +7,7 @@ make safe defaults the obvious move. The aim is not to script every
 agent action but to make the *next* agent that walks in succeed without
 having to re-derive the rules.
 
-These principles are enforced by `/mol-agent:check`. Run it against
+These principles are enforced by `/mol:bootstrap`. Run it against
 any project that has been bootstrapped with the mol harness to check
 compliance. (The `claude-plugin/` marketplace repo itself has no
 harness — use `/mol-plugin:check` for its self-audit.)
@@ -284,7 +284,7 @@ See Section 1.
 
 ## 6. Re-Examination Checklist
 
-`/mol-agent:check <path>` walks this checklist against any `.claude/`
+`/mol:bootstrap` walks this checklist against any `.claude/`
 tree. Output one finding per row: `<emoji> file:line — message` (🚨 /
 🔴 / 🟡 / 🟢).
 

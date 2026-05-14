@@ -7,7 +7,7 @@ argument-hint: "[<scope-path>]"
 
 Read CLAUDE.md → parse `mol_project:` (`$META`); else emit adoption hint and stop.
 
-Blueprint path: always `<root>/.claude/notes/architecture.md` — passive internal context belongs under `.claude/notes/` per `plugins/mol/rules/design-principles.md` L1, regardless of `$META.notes_path`. (A `notes_path` outside `.claude/notes/` is itself an L1 violation flagged by `/mol-agent:check`.) Create `.claude/notes/` if missing.
+Blueprint path: always `<root>/.claude/notes/architecture.md` — passive internal context belongs under `.claude/notes/` per `plugins/mol/rules/design-principles.md` L1, regardless of `$META.notes_path`. (A `notes_path` outside `.claude/notes/` is itself an L1 violation flagged by `/mol:bootstrap`.) Create `.claude/notes/` if missing.
 
 Single responsibility: build/refresh the blueprint. `librarian` consumes it; `architect` (review mode) enforces compliance against it (O1 in `design-principles.md`). `/mol:spec` Step 4.5 consults `librarian`, which reads what this skill writes.
 

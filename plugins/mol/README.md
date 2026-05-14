@@ -8,8 +8,7 @@ the *next* agent that walks in succeeds without re-deriving the rules.
 
 `mol` is the day-to-day toolbox: spec, implement, review, fix,
 refactor, simplify, ship. The harness *itself* (CLAUDE.md, `.claude/notes/`,
-`.claude/specs/`) is installed and maintained by the sibling plugin
-[`mol-agent`](../mol-agent/README.md).
+`.claude/specs/`) is installed and maintained by `/mol:bootstrap`.
 
 Skills adapt to each project by reading a `mol_project:` YAML
 frontmatter block at the top of the project's `CLAUDE.md` — so one
@@ -21,7 +20,6 @@ molnex without per-project forks.
 ```
 /plugin marketplace add https://github.com/MolCrafts/claude-plugin
 /plugin install mol@molcrafts
-/plugin install mol-agent@molcrafts
 ```
 
 For local development:
@@ -49,14 +47,14 @@ active/passive split lives inside `.claude/`.
 
 Notes are kept; specs are intentionally ephemeral. Full rules in
 [`rules/design-principles.md`](rules/design-principles.md). Run
-`/mol-agent:check` to verify compliance.
+`/mol:bootstrap` to verify compliance.
 
 ## Skills
 
 All `mol` skills require a `mol_project:` frontmatter in CLAUDE.md
 (see [`rules/claude-md-metadata.md`](rules/claude-md-metadata.md)) and
 fail fast with an adoption hint when it is missing. To create
-CLAUDE.md and the surrounding harness, run `/mol-agent:bootstrap`
+CLAUDE.md and the surrounding harness, run `/mol:bootstrap`
 first.
 
 One frontmatter field worth knowing about up front:
@@ -69,8 +67,14 @@ shims for public-signature changes; `maintenance` makes
 `/mol:fix` proceeds). Full matrix in
 [`rules/stage-policy.md`](rules/stage-policy.md).
 
-The 19 skills group by intent. Each row shows what it does, when to
+The 21 skills group by intent. Each row shows what it does, when to
 reach for it, and a one-line example.
+
+### 0 — Harness lifecycle
+
+| Skill | What | When | Example |
+|---|---|---|---|
+| `/mol:bootstrap` | Initialize or maintain the agent harness (CLAUDE.md + `.claude/notes/` + `.claude/specs/`). Three paths: no harness → create fresh; harness exists → audit + repair; healthy harness → single-line no-op. Never writes project source. | First time in a project; after upgrading mol; when harness has drifted. | `/mol:bootstrap` |
 
 ### 1 — Plan & specify
 
@@ -85,6 +89,7 @@ reach for it, and a one-line example.
 | Skill | What | When | Example |
 |---|---|---|---|
 | `/mol:impl` | Full TDD workflow gated on an approved spec + acceptance contract. Resume-syncs already-done tasks before writing new code. Ticks the spec's checkboxes as it progresses; flips each `code` / `runtime` acceptance criterion to `status: verified` at close-out. Parks at `status: code-complete` if runtime-evaluator-typed criteria (`ui_runtime` / `scientific` / `performance` / `docs`) are still `pending`; only deletes spec + acceptance + INDEX once every criterion is `verified`. | After `/mol:spec` is `status: approved`. | `/mol:impl morse-bond` |
+| `/mol:impl-all <prefix>` | Batch-implement a spec chain (`<prefix>-01-*`, `<prefix>-02-*`, …) end-to-end. Discovers matching specs, sorts by numeric suffix, runs `/mol:impl` on each non-interactively, auto-commits and simplifies between specs. Never stops to ask questions. Stops on first failure. | When a feature is split into a spec chain and you want hands-off execution. | `/mol:impl-all morse-bond` |
 | `/mol:fix` | Minimal-diff bug fix — reproduce, delegate diagnosis to `debugger` subagent (Step 2), patch the smallest surface, verify. Calls `tester` for a regression test when the root cause suggests a missing one. | When a test fails or a bug is reported. | `/mol:fix energy NaN at zero distance` |
 | `/mol:refactor` | Restructure code while preserving all architectural invariants. Snapshot → incremental change → re-verify. Calls `architect` pre and post. | When the structure needs to change but behavior must not. | `/mol:refactor split forces module by backend` |
 | `/mol:simplify` | Apply `janitor`'s hygiene findings as the write-mode counterpart — dead code, debug residue, magic-literal substitution, captured-rule naming drift — **and** enforce the language-canonical toolchain trio on the verify gate (Python: `ruff` + `ty`; TypeScript: `biome` + `tsc`; Rust: `cargo fmt` + `clippy` + `cargo check`); a regression in any of them reverts the entire batch. Behavior-preserving by contract. Mandatorily invoked by `/mol:impl` Step 6.5 as the single backward-compat gatekeeper (delete legacy at `experimental`, deprecation-shim at `stable`, migration-note flag at `beta`, leave alone at `maintenance`). | After `/mol:impl` finishes, before `/mol:commit`, to strip cruft accumulated during exploration; or anywhere `/mol:review`'s hygiene axis flagged drift. | `/mol:simplify` |
@@ -203,17 +208,17 @@ writes but `optimizer` doesn't — is documented in
 orthogonality, knowledge-locality, capability, workflow, output, and
 idempotency rules are spelled out — and audit-checked — in
 [`rules/design-principles.md`](rules/design-principles.md). Run
-`/mol-agent:check` against any project's harness to verify
+`/mol:bootstrap` against any project's harness to verify
 compliance. (The marketplace repo itself has no harness; use
 `/mol-plugin:check` for its self-audit.)
 
 ## Adopt in a project
 
-1. Run `/mol-agent:bootstrap` from the project root. It inspects the
+1. Run `/mol:bootstrap` from the project root. It inspects the
    repo, asks what to add, and installs only what's justified —
    including the `mol_project:` frontmatter if you opt in.
-2. Smoke-test with `/mol-agent:check` (harness presence + design
-   compliance) and `/mol:review --axis=arch` (architecture).
+2. Smoke-test with `/mol:bootstrap` (re-run to verify harness health)
+   and `/mol:review --axis=arch` (architecture).
 
 Each project's harness is rewritten in place rather than migrated in
 phases — this is continuous iteration.

@@ -85,7 +85,6 @@ Count summary:
 | Plugin       | applied | ambiguity |
 |--------------|---------|-----------|
 | mol          |         |           |
-| mol-agent    |         |           |
 | mol-plugin   |         |           |
 
 End with one-line F2 summary: files reviewed, lines simplified, overlap removed, ambiguities outstanding.

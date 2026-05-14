@@ -6,7 +6,7 @@ layout, doc style, hot-path focus, and where internal agent context
 lives — by reading a `mol_project:` YAML frontmatter block at the top
 of the project's `CLAUDE.md`.
 
-Adopting this contract is **optional**. `/mol-agent:bootstrap` will
+Adopting this contract is **optional**. `/mol:bootstrap` will
 create a CLAUDE.md without it (the basic harness-engineering layering — see
 `design-principles.md` § 1 — does not require the contract). Add the
 block when you want the `mol` plugin's skills (`/mol:impl`,
@@ -262,10 +262,10 @@ Missing `mol_project` block entirely → most skills print:
 
 ```
 [mol] No mol_project frontmatter found in CLAUDE.md.
-Run /mol-agent:bootstrap to set up the harness for this project.
+Run /mol:bootstrap to set up the harness for this project.
 ```
 
-`/mol-agent:bootstrap` itself does not require the block — it is the
+`/mol:bootstrap` itself does not require the block — it is the
 tool used to create CLAUDE.md (and optionally populate the block).
 
 Missing individual keys → the skill logs a `[mol] falling back …` line
